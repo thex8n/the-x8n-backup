@@ -90,42 +90,76 @@ export default function BarcodeScannerScreen({
   }
 
   useEffect(() => {
+    let mounted = true
+
     const initScanner = async () => {
       try {
         const html5QrCode = new Html5Qrcode(qrCodeRegionId)
         scannerRef.current = html5QrCode
 
-        await html5QrCode.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-          },
-          (decodedText) => {
-            handleScan(decodedText)
-          },
-          (errorMessage) => {
-            console.log('Scanning...', errorMessage)
-          }
-        )
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        }
 
-        setIsInitialized(true)
+        try {
+          await html5QrCode.start(
+            { facingMode: 'environment' },
+            config,
+            (decodedText) => {
+              if (mounted) {
+                handleScan(decodedText)
+              }
+            },
+            (errorMessage) => {
+              console.log('Scanning...')
+            }
+          )
+        } catch (startError: any) {
+          console.error('Error with environment camera, trying default:', startError)
+
+          await html5QrCode.start(
+            { facingMode: 'user' },
+            config,
+            (decodedText) => {
+              if (mounted) {
+                handleScan(decodedText)
+              }
+            },
+            (errorMessage) => {
+              console.log('Scanning...')
+            }
+          )
+        }
+
+        if (mounted) {
+          setIsInitialized(true)
+        }
       } catch (error: any) {
         console.error('Error starting scanner:', error)
-        if (error.name === 'NotAllowedError') {
+        if (!mounted) return
+
+        if (error.name === 'NotAllowedError' || error.toString().includes('NotAllowedError')) {
           setScannerError('Debes permitir el acceso a la cámara para escanear códigos de barras.')
-        } else if (error.name === 'NotFoundError') {
+        } else if (error.name === 'NotFoundError' || error.toString().includes('NotFoundError')) {
           setScannerError('No se encontró ninguna cámara en tu dispositivo.')
+        } else if (error.toString().includes('OverconstrainedError')) {
+          setScannerError('La cámara no cumple con los requisitos. Intenta con otro dispositivo.')
         } else {
-          setScannerError('Error al iniciar la cámara. Verifica los permisos en tu navegador.')
+          setScannerError(`Error: ${error.message || error.toString()}`)
         }
       }
     }
 
-    initScanner()
+    const timer = setTimeout(() => {
+      initScanner()
+    }, 100)
 
     return () => {
+      mounted = false
+      clearTimeout(timer)
       if (scannerRef.current) {
         scannerRef.current.stop().catch((err) => console.error('Error stopping scanner:', err))
       }
