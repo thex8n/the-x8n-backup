@@ -1,285 +1,234 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { BrowserMultiFormatReader } from '@zxing/browser'
-import { DecodeHintType, BarcodeFormat } from '@zxing/library'
-import { X, Scan, AlertCircle } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { findProductByCode, incrementProductStock } from '@/app/actions/products'
-import { ProductWithCategory } from '@/types/product'
+import { Html5Qrcode } from 'html5-qrcode'
+import { X, Camera, AlertCircle, Flashlight, FlashlightOff } from 'lucide-react'
 
-interface BarcodeScannerScreenProps {
+interface BarcodeScannerModalProps {
   onClose: () => void
-  onProductNotFound: (code: string) => void
+  onScanSuccess: (code: string) => void
 }
 
-export default function BarcodeScannerScreen({
-  onClose,
-  onProductNotFound
-}: BarcodeScannerScreenProps) {
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  const [isScanning, setIsScanning] = useState(true)
-  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null)
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [scannerError, setScannerError] = useState<string | null>(null)
-  const controlsRef = useRef<{ stop: () => void } | null>(null)
-
-  const handleScan = async (decodedText: string) => {
-    if (!isScanning || decodedText === lastScannedCode) return
-
-    setLastScannedCode(decodedText)
-    setIsScanning(false)
-
-    try {
-      const response = await findProductByCode(decodedText)
-
-      if (response.error) {
-        toast.error('Error al buscar el producto')
-        setIsScanning(true)
-        setTimeout(() => setLastScannedCode(null), 1000)
-        return
-      }
-
-      if (!response.data) {
-        toast('Producto nuevo detectado', {
-          icon: '📦',
-          duration: 2000,
-        })
-        if (controlsRef.current) {
-          controlsRef.current.stop()
-        }
-        onProductNotFound(decodedText)
-        return
-      }
-
-      const product = response.data as ProductWithCategory
-
-      const stockResponse = await incrementProductStock(product.id)
-
-      if (stockResponse.error) {
-        toast.error('Error al actualizar el stock')
-        setIsScanning(true)
-        setTimeout(() => setLastScannedCode(null), 1000)
-        return
-      }
-
-      const updatedProduct = stockResponse.data as ProductWithCategory
-
-      toast.success(
-        `✓ ${updatedProduct.name} +1 (Stock: ${updatedProduct.stock_quantity})`,
-        {
-          duration: 2000,
-          style: {
-            background: '#10b981',
-            color: '#fff',
-            fontWeight: '600',
-          },
-        }
-      )
-
-      setTimeout(() => {
-        setLastScannedCode(null)
-        setIsScanning(true)
-      }, 800)
-
-    } catch (error) {
-      console.error('Error processing barcode:', error)
-      toast.error('Error al procesar el código')
-      setIsScanning(true)
-      setTimeout(() => setLastScannedCode(null), 1000)
-    }
-  }
+export default function BarcodeScannerModal({ onClose, onScanSuccess }: BarcodeScannerModalProps) {
+  const [isScanning, setIsScanning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [scannedCode, setScannedCode] = useState<string | null>(null)
+  const [torchEnabled, setTorchEnabled] = useState(false)
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
+  const scannerIdRef = useRef('barcode-scanner')
 
   useEffect(() => {
-    let mounted = true
-
-    const initScanner = async () => {
-      try {
-        const hints = new Map()
-        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-          BarcodeFormat.QR_CODE,
-          BarcodeFormat.EAN_13,
-          BarcodeFormat.EAN_8,
-          BarcodeFormat.CODE_128,
-          BarcodeFormat.CODE_39,
-          BarcodeFormat.UPC_A,
-          BarcodeFormat.UPC_E,
-        ])
-
-        const reader = new BrowserMultiFormatReader(hints)
-
-        if (!videoRef.current) {
-          setScannerError('Error al inicializar el video.')
-          return
-        }
-
-        const controls = await reader.decodeFromConstraints(
-          {
-            video: {
-              facingMode: { ideal: 'environment' }
-            }
-          },
-          videoRef.current,
-          (result) => {
-            if (result && mounted) {
-              handleScan(result.getText())
-            }
-          }
-        )
-
-        controlsRef.current = controls
-
-        if (mounted) {
-          setIsInitialized(true)
-        }
-      } catch (error: any) {
-        console.error('Error starting scanner:', error)
-        if (!mounted) return
-
-        if (error.name === 'NotAllowedError' || error.toString().includes('NotAllowedError')) {
-          setScannerError('Debes permitir el acceso a la cámara para escanear códigos de barras.')
-        } else if (error.name === 'NotFoundError' || error.toString().includes('NotFoundError')) {
-          setScannerError('No se encontró ninguna cámara en tu dispositivo.')
-        } else if (error.toString().includes('NotReadableError')) {
-          setScannerError('La cámara está siendo usada por otra aplicación.')
-        } else {
-          setScannerError(`Error: ${error.message || error.toString()}`)
-        }
-      }
-    }
-
-    const timer = setTimeout(() => {
-      initScanner()
-    }, 100)
+    startScanner()
 
     return () => {
-      mounted = false
-      clearTimeout(timer)
-      if (controlsRef.current) {
-        try {
-          controlsRef.current.stop()
-        } catch (err) {
-          console.error('Error stopping scanner:', err)
-        }
-      }
+      stopScanner()
     }
   }, [])
 
-  const handleClose = () => {
-    if (controlsRef.current) {
+  const startScanner = async () => {
+    try {
+      const html5QrCode = new Html5Qrcode(scannerIdRef.current)
+      html5QrCodeRef.current = html5QrCode
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+      }
+
+      await html5QrCode.start(
+        { facingMode: 'environment' },
+        config,
+        (decodedText) => {
+          handleScanSuccess(decodedText)
+        },
+        () => {}
+      )
+
+      setIsScanning(true)
+      setError(null)
+    } catch (err) {
+      console.error('Error starting scanner:', err)
+      setError('No se pudo acceder a la cámara. Verifica los permisos.')
+      setIsScanning(false)
+    }
+  }
+
+  const stopScanner = async () => {
+    if (html5QrCodeRef.current && isScanning) {
       try {
-        controlsRef.current.stop()
+        await html5QrCodeRef.current.stop()
+        html5QrCodeRef.current.clear()
       } catch (err) {
         console.error('Error stopping scanner:', err)
       }
     }
+  }
+
+  const handleScanSuccess = async (decodedText: string) => {
+    setScannedCode(decodedText)
+    
+    if (navigator.vibrate) {
+      navigator.vibrate(200)
+    }
+
+    await stopScanner()
+    setIsScanning(false)
+
+    setTimeout(() => {
+      onScanSuccess(decodedText)
+      onClose()
+    }, 1000)
+  }
+
+  const toggleTorch = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        const capabilities = html5QrCodeRef.current.getRunningTrackCameraCapabilities()
+        if (capabilities && 'torch' in capabilities) {
+          await html5QrCodeRef.current.applyVideoConstraints({
+            advanced: [{ torch: !torchEnabled } as MediaTrackConstraintSet]
+          })
+          setTorchEnabled(!torchEnabled)
+        }
+      } catch (err) {
+        console.error('Torch not supported:', err)
+      }
+    }
+  }
+
+  const handleClose = async () => {
+    await stopScanner()
     onClose()
   }
 
-  if (scannerError) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black">
-        <div className="flex flex-col h-full">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Error de Cámara</h2>
-            <button
-              onClick={handleClose}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+  return (
+    <div className="fixed inset-0 bg-black" style={{ zIndex: 60 }}>
+      <div className="absolute top-0 left-0 right-0 p-4" style={{ 
+        zIndex: 10,
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)',
+        paddingTop: 'max(1rem, env(safe-area-inset-top))'
+      }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Camera className="w-6 h-6 text-white" />
+            <div>
+              <h2 className="text-white font-semibold text-lg">Escanear Código</h2>
+              <p className="text-white opacity-70 text-xs">Apunta al código de barras</p>
+            </div>
           </div>
+          <button
+            onClick={handleClose}
+            className="p-2 rounded-full bg-white bg-opacity-20 backdrop-blur-sm hover:bg-opacity-30 transition-colors"
+            aria-label="Cerrar"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+        </div>
+      </div>
 
-          <div className="flex-1 flex items-center justify-center p-6">
-            <div className="text-center max-w-md">
-              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-3">
-                No se puede acceder a la cámara
-              </h3>
-              <p className="text-gray-300 mb-6">
-                {scannerError}
-              </p>
-              <div className="bg-gray-800 rounded-lg p-4 text-left text-sm text-gray-300 mb-6">
-                <p className="font-semibold mb-2">Para habilitar la cámara:</p>
-                <ol className="list-decimal list-inside space-y-1">
-                  <li>Verifica que estés usando HTTPS</li>
-                  <li>Ve a configuración del navegador</li>
-                  <li>Busca permisos de cámara</li>
-                  <li>Permite acceso para este sitio</li>
-                </ol>
+      <div className="relative w-full h-full flex items-center justify-center">
+        <div id={scannerIdRef.current} className="w-full h-full" />
+
+        {isScanning && !scannedCode && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="relative w-full h-full flex items-center justify-center">
+              <div className="absolute inset-0 bg-black opacity-50" />
+              
+              <div className="relative w-64 h-64" style={{ zIndex: 10 }}>
+                <div className="absolute inset-0 border-2 border-white rounded-lg">
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br-lg" />
+                  
+                  <div 
+                    className="absolute top-0 left-0 right-0 h-1" 
+                    style={{
+                      background: 'linear-gradient(to right, transparent, #3b82f6, transparent)',
+                      animation: 'scan 2s ease-in-out infinite'
+                    }}
+                  />
+                </div>
+                
+                <div className="absolute left-0 right-0 text-center" style={{ bottom: '-4rem' }}>
+                  <p className="text-white text-sm font-medium px-4">
+                    Mantén el código dentro del marco
+                  </p>
+                </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {scannedCode && (
+          <div className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center" style={{ zIndex: 20 }}>
+            <div className="bg-white rounded-2xl p-8 mx-4 text-center" style={{
+              animation: 'scale-in 0.3s ease-out'
+            }}>
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">¡Código Escaneado!</h3>
+              <p className="text-gray-600 mb-4">Código detectado:</p>
+              <div className="bg-gray-100 rounded-lg px-4 py-3 mb-4">
+                <p className="font-mono text-lg font-semibold text-gray-900">{scannedCode}</p>
+              </div>
+              <p className="text-sm text-gray-500">Redirigiendo...</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4" style={{ zIndex: 20 }}>
+            <div className="bg-white rounded-2xl p-6 max-w-sm">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">Error de Cámara</h3>
+              <p className="text-gray-600 text-center mb-6">{error}</p>
               <button
                 onClick={handleClose}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
               >
                 Cerrar
               </button>
             </div>
           </div>
-        </div>
+        )}
       </div>
-    )
-  }
 
-  if (!isInitialized) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg">Iniciando cámara...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black">
-      <div className="flex flex-col h-full">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Escanear Productos</h2>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="flex-1 relative bg-black overflow-hidden flex items-center justify-center">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64">
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl-lg"></div>
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr-lg"></div>
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl-lg"></div>
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br-lg"></div>
-
-              {isScanning && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 animate-scan"></div>
+      {isScanning && !scannedCode && !error && (
+        <div 
+          className="absolute bottom-0 left-0 right-0 p-6" 
+          style={{ 
+            zIndex: 10,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+            paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))'
+          }}
+        >
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={toggleTorch}
+              className="p-4 rounded-full bg-white bg-opacity-20 backdrop-blur-sm hover:bg-opacity-30 transition-colors"
+              aria-label={torchEnabled ? "Apagar linterna" : "Encender linterna"}
+            >
+              {torchEnabled ? (
+                <Flashlight className="w-6 h-6 text-yellow-300" />
+              ) : (
+                <FlashlightOff className="w-6 h-6 text-white" />
               )}
-            </div>
+            </button>
+          </div>
+          
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <p className="text-white opacity-70 text-sm">Escáner activo</p>
           </div>
         </div>
-
-        <div className="bg-gray-900 text-white px-6 py-8 text-center">
-          <div className="flex items-center justify-center mb-3">
-            <Scan className="w-8 h-8 text-blue-500" />
-          </div>
-          <p className="text-lg font-medium mb-1">
-            {isScanning ? 'Acerca el código de barras' : 'Procesando...'}
-          </p>
-          <p className="text-sm text-gray-400">
-            {isScanning ? 'El escáner detectará automáticamente el código' : 'Espera un momento'}
-          </p>
-        </div>
-      </div>
+      )}
 
       <style jsx>{`
         @keyframes scan {
@@ -293,8 +242,15 @@ export default function BarcodeScannerScreen({
             top: 0;
           }
         }
-        .animate-scan {
-          animation: scan 2s ease-in-out infinite;
+        @keyframes scale-in {
+          0% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
       `}</style>
     </div>

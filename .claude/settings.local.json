@@ -8,7 +8,8 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Bash(npm install:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(del \"c:\\the-x8n\\src\\components\\inventory\\BarcodeScannerScreen.tsx\")"
     ],
     "deny": [],
     "ask": []

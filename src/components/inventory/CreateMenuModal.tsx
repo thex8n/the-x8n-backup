@@ -1,12 +1,15 @@
 'use client'
 
+import { Scan } from 'lucide-react'
+
 interface CreateMenuModalProps {
   onClose: () => void
   onSelectProduct: () => void
   onSelectCategory: () => void
+  onSelectScanner: () => void
 }
 
-export default function CreateMenuModal({ onClose, onSelectProduct, onSelectCategory }: CreateMenuModalProps) {
+export default function CreateMenuModal({ onClose, onSelectProduct, onSelectCategory, onSelectScanner }: CreateMenuModalProps) {
   return (
     <div
       className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center p-4 z-50"
@@ -30,7 +33,22 @@ export default function CreateMenuModal({ onClose, onSelectProduct, onSelectCate
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={onSelectScanner}
+              className="group p-6 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all"
+            >
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                  <Scan className="w-8 h-8 text-purple-600" strokeWidth={2} />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Escanear Código</h3>
+                  <p className="text-sm text-gray-600">Usar cámara para escanear</p>
+                </div>
+              </div>
+            </button>
+
             <button
               onClick={onSelectProduct}
               className="group p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all"
