@@ -93,14 +93,8 @@ export default function InventoryPage() {
   }, [])
 
   const handleScanSuccess = (code: string) => {
-    const existingProduct = allProducts.find(p => p.code === code)
-    
-    if (existingProduct) {
-      setEditingProduct(existingProduct)
-    } else {
-      setScannedCode(code)
-      setShowAddProductForm(true)
-    }
+    // Solo guardar el código, no abrir ningún formulario
+    setScannedCode(code)
   }
 
   return (
@@ -176,7 +170,6 @@ export default function InventoryPage() {
         {showBarcodeScanner && (
           <BarcodeScannerModal
             onClose={() => setShowBarcodeScanner(false)}
-            onScanSuccess={handleScanSuccess}
           />
         )}
 

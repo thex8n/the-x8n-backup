@@ -67,7 +67,7 @@ export default function BarcodeScannerModal({ onClose, onScanSuccess }: BarcodeS
 
   const handleScanSuccess = async (decodedText: string) => {
     setScannedCode(decodedText)
-    
+
     if (navigator.vibrate) {
       navigator.vibrate(200)
     }
@@ -77,7 +77,6 @@ export default function BarcodeScannerModal({ onClose, onScanSuccess }: BarcodeS
 
     setTimeout(() => {
       onScanSuccess(decodedText)
-      onClose()
     }, 1000)
   }
 
