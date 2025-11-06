@@ -10,6 +10,9 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Custom breakpoint for small devices */
+  --breakpoint-xs: 375px;
 }
 
 @media (prefers-color-scheme: dark) {

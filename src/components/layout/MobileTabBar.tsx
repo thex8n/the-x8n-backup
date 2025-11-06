@@ -125,32 +125,32 @@ function TabButton({ item, isActive, isTransitioning }: TabButtonProps) {
   return (
     <Link
       href={item.path}
-      className={`relative flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-2xl ${
+      className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 px-1.5 xs:px-2 py-2 rounded-2xl min-w-[44px] min-h-[44px] ${
         isActive ? 'text-white' : 'text-gray-500 hover:text-blue-600'
       }`}
     >
       {isActive && (
         <>
-          <div 
-            className="absolute inset-0 rounded-2xl shadow-lg" 
+          <div
+            className="absolute inset-0 rounded-2xl shadow-lg"
             style={{
               background: `linear-gradient(to bottom right, ${gradientColors})`,
               boxShadow: `0 10px 15px -3px ${shadowColor}, 0 4px 6px -4px ${shadowColor}`
             }}
           />
-          <div 
-            className="absolute -top-6 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full shadow-xl flex items-center justify-center border-4 border-white"
+          <div
+            className="absolute -top-5 xs:-top-6 left-1/2 -translate-x-1/2 w-10 h-10 xs:w-11 xs:h-11 rounded-full shadow-xl flex items-center justify-center border-3 xs:border-4 border-white"
             style={{
               background: `linear-gradient(to bottom right, ${gradientColors})`,
               boxShadow: `0 20px 25px -5px ${shadowColor}, 0 8px 10px -6px ${shadowColor}`
             }}
           >
-            <Icon className="w-5 h-5 text-white" strokeWidth={2.5} />
+            <Icon className="w-4 h-4 xs:w-5 xs:h-5 text-white" strokeWidth={2.5} />
           </div>
           {isTransitioning && (
             <div
-              className="absolute -top-6 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full border-2"
-              style={{ 
+              className="absolute -top-5 xs:-top-6 left-1/2 -translate-x-1/2 w-10 h-10 xs:w-11 xs:h-11 rounded-full border-2"
+              style={{
                 animation: 'ping 0.5s cubic-bezier(0, 0, 0.2, 1)',
                 borderColor: borderColor
               }}
@@ -158,9 +158,9 @@ function TabButton({ item, isActive, isTransitioning }: TabButtonProps) {
           )}
         </>
       )}
-      <div className="relative z-10 flex flex-col items-center gap-1">
-        {!isActive && <Icon className="w-6 h-6 transition-all duration-500 scale-100 opacity-100" strokeWidth={2} />}
-        <span className={`${momoTrust.className} text-xs font-semibold ${isActive ? 'mt-4 opacity-100' : 'opacity-80'}`}>
+      <div className="relative z-10 flex flex-col items-center gap-0.5 sm:gap-1">
+        {!isActive && <Icon className="w-5 h-5 xs:w-6 xs:h-6 transition-all duration-500 scale-100 opacity-100" strokeWidth={2} />}
+        <span className={`${momoTrust.className} text-[0.65rem] xs:text-xs font-semibold ${isActive ? 'mt-3 xs:mt-4 opacity-100' : 'opacity-80'} leading-tight`}>
           {item.name}
         </span>
       </div>
@@ -190,7 +190,7 @@ export default function MobileTabBar() {
   return (
     <>
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-2xl">
-        <div className="flex items-center justify-around px-2 py-3 pb-safe">
+        <div className="flex items-center justify-around gap-0.5 xs:gap-1 px-1 xs:px-2 py-2.5 xs:py-3 pb-safe">
           {TAB_ITEMS.map((item) => (
             <TabButton
               key={item.path}
@@ -201,16 +201,32 @@ export default function MobileTabBar() {
           ))}
         </div>
       </div>
-      
+
       <style jsx global>{`
         .pb-safe {
-          padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+          padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
         }
         @keyframes ping {
           75%, 100% {
             transform: scale(2);
             opacity: 0;
           }
+        }
+        /* Custom xs breakpoint for very small devices (375px+) */
+        @media (min-width: 375px) {
+          .xs\\:px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+          .xs\\:py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+          .xs\\:gap-1 { gap: 0.25rem; }
+          .xs\\:-top-6 { top: -1.5rem; }
+          .xs\\:w-11 { width: 2.75rem; }
+          .xs\\:h-11 { height: 2.75rem; }
+          .xs\\:w-5 { width: 1.25rem; }
+          .xs\\:h-5 { height: 1.25rem; }
+          .xs\\:w-6 { width: 1.5rem; }
+          .xs\\:h-6 { height: 1.5rem; }
+          .xs\\:text-xs { font-size: 0.75rem; }
+          .xs\\:mt-4 { margin-top: 1rem; }
+          .xs\\:border-4 { border-width: 4px; }
         }
       `}</style>
     </>

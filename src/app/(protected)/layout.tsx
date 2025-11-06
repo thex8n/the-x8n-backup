@@ -24,8 +24,8 @@ export default async function ProtectedLayout({
         {/* Sidebar para desktop - se oculta en móvil */}
         <Sidebar userName={userName} userInitials={userInitials} />
         
-        {/* Main content con padding bottom para el TabBar móvil */}
-        <main className="flex-1 bg-gray-50 min-h-screen pb-24 md:pb-0">
+        {/* Main content con padding bottom adaptativo para el TabBar móvil */}
+        <main className="flex-1 bg-gray-50 min-h-screen pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-0">
           {children}
         </main>
       </div>
