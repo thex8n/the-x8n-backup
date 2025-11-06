@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { addProduct } from '@/app/actions/products'
+import { addProduct, getProducts } from '@/app/actions/products'
 import { getCategories } from '@/app/actions/categories'
 import { ProductFormData } from '@/types/product'
 import { Category } from '@/types/category'
@@ -12,9 +12,10 @@ interface AddProductFormProps {
   onClose: () => void
   onSuccess: () => void
   initialCode?: string | null
+  initialBarcode?: string | null
 }
 
-export default function AddProductForm({ onClose, onSuccess, initialCode }: AddProductFormProps) {
+export default function AddProductForm({ onClose, onSuccess, initialCode, initialBarcode }: AddProductFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
@@ -23,6 +24,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode }: AddP
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     code: initialCode || '',
+    barcode: initialBarcode || '',
     category_id: null,
     stock_quantity: 0,
     minimum_stock: 0,
@@ -38,15 +40,48 @@ export default function AddProductForm({ onClose, onSuccess, initialCode }: AddP
 
   useEffect(() => {
     if (initialCode) {
-      setFormData(prev => ({ ...prev, code: initialCode }))
+      setFormData(prev => ({
+        ...prev,
+        code: initialCode
+      }))
     }
-  }, [initialCode])
+    if (initialBarcode) {
+      setFormData(prev => ({
+        ...prev,
+        barcode: initialBarcode
+      }))
+    }
+  }, [initialCode, initialBarcode])
 
   const loadCategories = async () => {
     const result = await getCategories()
     if ('data' in result && result.data) {
       setCategories(result.data)
     }
+  }
+
+  const generateNextProductCode = async (): Promise<string> => {
+    const result = await getProducts()
+    if ('data' in result && result.data) {
+      const products = result.data
+      
+      // Filtrar productos que tienen códigos con formato PROD-XXX
+      const prodCodes = products
+        .map((p: any) => p.code)
+        .filter((code: string) => code.startsWith('PROD-'))
+        .map((code: string) => {
+          const num = parseInt(code.replace('PROD-', ''))
+          return isNaN(num) ? 0 : num
+        })
+      
+      // Encontrar el número más alto y sumar 1
+      const maxNum = prodCodes.length > 0 ? Math.max(...prodCodes) : 0
+      const nextNum = maxNum + 1
+      
+      return `PROD-${String(nextNum).padStart(3, '0')}`
+    }
+    
+    return 'PROD-001'
   }
 
   const handleCategorySuccess = () => {
@@ -59,7 +94,23 @@ export default function AddProductForm({ onClose, onSuccess, initialCode }: AddP
     setLoading(true)
     setError(null)
 
-    const result = await addProduct(formData)
+    // Si no hay código único, generar uno automáticamente
+    let finalCode = formData.code
+    if (!finalCode && formData.barcode) {
+      finalCode = await generateNextProductCode()
+    }
+
+    // Validar que al menos uno de los dos códigos esté presente
+    if (!finalCode && !formData.barcode) {
+      setError('Debes ingresar al menos un Código Único o un Código de Barra')
+      setLoading(false)
+      return
+    }
+
+    const result = await addProduct({
+      ...formData,
+      code: finalCode
+    })
 
     if (result.error) {
       setError(result.error)
@@ -84,19 +135,19 @@ export default function AddProductForm({ onClose, onSuccess, initialCode }: AddP
 
   return (
     <div
-      className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-2xl md:max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Agregar Producto</h2>
+        <div className="pb-32 md:p-6 md:pb-6">
+          <div className="flex justify-between items-center mb-4 md:mb-6 bg-gray-100 md:bg-transparent px-4 md:px-0 py-5 md:py-0">
+            <h2 className="text-3xl md:text-2xl font-bold text-gray-900">Nuevo Producto</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 p-2"
               aria-label="Cerrar"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,15 +157,188 @@ export default function AddProductForm({ onClose, onSuccess, initialCode }: AddP
           </div>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 mx-4 md:mx-0 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-800 text-sm">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4 px-4 md:px-0">
+            {/* VERSION MÓVIL */}
+            <div className="space-y-4 md:hidden">
+              {/* 1. Stock Actual y Stock Mínimo */}
+              <div className="grid grid-cols-2 gap-3 -mt-2">
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-yellow-400">
+                  <input
+                    type="number"
+                    id="stock_quantity_card"
+                    name="stock_quantity"
+                    required
+                    min="0"
+                    value={formData.stock_quantity === 0 ? '' : formData.stock_quantity}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none placeholder:text-gray-400"
+                  />
+                  <label htmlFor="stock_quantity_card" className="text-sm text-gray-500 mt-1 block">
+                    Stock Actual
+                  </label>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-red-400">
+                  <input
+                    type="number"
+                    id="minimum_stock_card"
+                    name="minimum_stock"
+                    required
+                    min="0"
+                    value={formData.minimum_stock === 0 ? '' : formData.minimum_stock}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none placeholder:text-gray-400"
+                  />
+                  <label htmlFor="minimum_stock_card" className="text-sm text-gray-500 mt-1 block">
+                    Stock Mínimo
+                  </label>
+                </div>
+              </div>
+
+              {/* 2. Nombre del Producto */}
+              <div>
+                <label htmlFor="name_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                  Nombre del Producto *
+                </label>
+                <input
+                  type="text"
+                  id="name_mobile"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.name ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
+                  placeholder="Ej: Laptop Dell XPS 15"
+                />
+              </div>
+
+              {/* 3. Código Único */}
+              <div>
+                <label htmlFor="code_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                  Código Único {!formData.barcode && '*'}
+                </label>
+                <input
+                  type="text"
+                  id="code_mobile"
+                  name="code"
+                  required={!formData.barcode}
+                  value={formData.code}
+                  onChange={handleChange}
+                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.code ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
+                  placeholder="Ej: PROD-001"
+                />
+              </div>
+
+              {/* 4. Código de Barra */}
+              <div>
+                <label htmlFor="barcode_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                  Código de Barra {!formData.code && '*'}
+                </label>
+                <input
+                  type="text"
+                  id="barcode_mobile"
+                  name="barcode"
+                  required={!formData.code}
+                  value={formData.barcode || ''}
+                  onChange={handleChange}
+                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.barcode ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
+                  placeholder="Escanear o ingresar código"
+                />
+              </div>
+
+              {/* 5. Precio Venta y Precio Costo */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-green-400">
+                  <input
+                    type="number"
+                    id="sale_price_card"
+                    name="sale_price"
+                    step="0.01"
+                    min="0"
+                    value={formData.sale_price || ''}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none"
+                  />
+                  <label htmlFor="sale_price_card" className="text-sm text-gray-500 mt-1 block">
+                    Precio Venta
+                  </label>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-blue-400">
+                  <input
+                    type="number"
+                    id="cost_price_card"
+                    name="cost_price"
+                    step="0.01"
+                    min="0"
+                    value={formData.cost_price || ''}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none"
+                  />
+                  <label htmlFor="cost_price_card" className="text-sm text-gray-500 mt-1 block">
+                    Precio Costo
+                  </label>
+                </div>
+              </div>
+
+              {/* 6. Categoría */}
+              <div>
+                <label htmlFor="category_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                  Categoría
+                </label>
+                <CategorySelector
+                  value={formData.category_id}
+                  onChange={(categoryId) => setFormData(prev => ({ ...prev, category_id: categoryId }))}
+                  categories={categories}
+                  onCreateNew={() => setShowCategoryForm(true)}
+                />
+              </div>
+
+              {/* 7. Unidad de Medida */}
+              <div>
+                <label htmlFor="unit_of_measure_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                  Unidad de Medida
+                </label>
+                <input
+                  type="text"
+                  id="unit_of_measure_mobile"
+                  name="unit_of_measure"
+                  value={formData.unit_of_measure}
+                  onChange={handleChange}
+                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.unit_of_measure ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
+                  placeholder="Ej: Unidad, Kg, Litro"
+                />
+              </div>
+
+              {/* 8. Producto Activo */}
+              <div className="flex items-center pt-2">
+                <input
+                  type="checkbox"
+                  id="active_mobile"
+                  name="active"
+                  checked={formData.active}
+                  onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="active_mobile" className="ml-2 text-sm font-medium text-gray-700">
+                  Producto Activo
+                </label>
+              </div>
+            </div>
+
+            {/* VERSION DESKTOP */}
+            <div className="hidden md:grid md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label htmlFor="name" className={labelClasses}>
+                <label htmlFor="name" className="block text-xs font-medium text-gray-500 mb-2">
                   Nombre del Producto *
                 </label>
                 <input
@@ -124,29 +348,48 @@ export default function AddProductForm({ onClose, onSuccess, initialCode }: AddP
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className={inputClasses}
+                  className="w-full px-0 py-2 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-lg font-medium text-gray-900 bg-transparent"
                   placeholder="Ej: Laptop Dell XPS 15"
                 />
               </div>
 
               <div>
-                <label htmlFor="code" className={labelClasses}>
-                  Código *
+                <label htmlFor="code" className="block text-xs font-medium text-gray-500 mb-2">
+                  Código {!formData.barcode && '*'}
                 </label>
                 <input
                   type="text"
                   id="code"
                   name="code"
-                  required
+                  required={!formData.barcode}
                   value={formData.code}
                   onChange={handleChange}
-                  className={inputClasses}
-                  placeholder="Ej: PROD-001"
+                  className="w-full px-0 py-2 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-lg font-medium text-gray-900 bg-transparent"
+                  placeholder={formData.barcode ? "Se generará automáticamente" : "Ej: PROD-001"}
+                />
+                {formData.barcode && !formData.code && (
+                  <p className="text-xs text-gray-400 mt-1">Se generará automáticamente (PROD-XXX)</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="barcode" className="block text-xs font-medium text-gray-500 mb-2">
+                  Código de Barra {!formData.code && '*'}
+                </label>
+                <input
+                  type="text"
+                  id="barcode"
+                  name="barcode"
+                  required={!formData.code}
+                  value={formData.barcode || ''}
+                  onChange={handleChange}
+                  className="w-full px-0 py-2 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-lg font-medium text-gray-900 bg-transparent"
+                  placeholder="Escanear o ingresar código"
                 />
               </div>
 
               <div>
-                <label htmlFor="category_id" className={labelClasses}>
+                <label htmlFor="category_id" className="block text-xs font-medium text-gray-500 mb-2">
                   Categoría
                 </label>
                 <CategorySelector
@@ -253,33 +496,33 @@ export default function AddProductForm({ onClose, onSuccess, initialCode }: AddP
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t sticky bottom-0 bg-white pb-4 px-4 -mx-4 md:px-0 md:mx-0">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-6 py-3 text-base text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
+                className="px-6 py-3 text-base bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {loading ? 'Guardando...' : 'Guardar Producto'}
+                {loading ? 'Guardando...' : 'Añadir Producto'}
               </button>
             </div>
           </form>
         </div>
-      </div>
 
-      {showCategoryForm && (
-        <AddCategoryForm
-          onClose={() => setShowCategoryForm(false)}
-          onSuccess={handleCategorySuccess}
-          categories={categories}
-        />
-      )}
+        {showCategoryForm && (
+          <AddCategoryForm
+            onClose={() => setShowCategoryForm(false)}
+            onSuccess={handleCategorySuccess}
+            categories={categories}
+          />
+        )}
+      </div>
     </div>
   )
 }

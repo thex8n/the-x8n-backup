@@ -3,6 +3,7 @@ export interface Product {
   user_id: string
   name: string
   code: string
+  barcode: string | null  // ✅ NUEVO: Código de barras del producto
   category_id: string | null
   stock_quantity: number
   minimum_stock: number
@@ -18,6 +19,7 @@ export interface Product {
 export interface ProductFormData {
   name: string
   code: string
+  barcode?: string | null  // ✅ NUEVO: Opcional porque no todos los productos tienen barcode
   category_id?: string | null
   stock_quantity: number
   minimum_stock: number

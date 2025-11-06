@@ -40,3 +40,192 @@ body {
 .animate-loading-bar {
   animation: loading-bar 1.5s ease-in-out infinite;
 }
+
+.scroll-smooth-touch {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+html, body {
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .scroll-smooth-touch {
+    scroll-snap-type: none;
+  }
+}
+
+/* ====================================
+   ESTILOS PARA SCROLLBAR DE CATEGORÍAS
+   ==================================== */
+
+/* Contenedor principal de categorías con scroll */
+.category-scroll-container {
+  max-width: 100%;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Estilos del scrollbar para navegadores Webkit (Chrome, Safari, Edge) */
+.category-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.category-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.category-scroll-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.category-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Estilos para Firefox */
+.category-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
+}
+
+/* ====================================
+   VARIANTES DE ALTURA
+   ==================================== */
+
+/* Altura pequeña - 60px */
+.category-scroll-sm {
+  height: 60px;
+}
+
+/* Altura mediana - 80px (por defecto) */
+.category-scroll-md {
+  height: 80px;
+}
+
+/* Altura grande - 100px */
+.category-scroll-lg {
+  height: 100px;
+}
+
+/* ====================================
+   OCULTAR SCROLLBAR (OPCIONAL)
+   ==================================== */
+
+/* Si quieres ocultar el scrollbar pero mantener la funcionalidad */
+.category-scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.category-scroll-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ====================================
+   SCROLLBAR CON TEMA OSCURO (OPCIONAL)
+   ==================================== */
+
+.category-scroll-dark::-webkit-scrollbar-track {
+  background: #2d3748;
+}
+
+.category-scroll-dark::-webkit-scrollbar-thumb {
+  background: #4a5568;
+}
+
+.category-scroll-dark::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
+
+.category-scroll-dark {
+  scrollbar-color: #4a5568 #2d3748;
+}
+
+/* ====================================
+   ANIMACIÓN DE FADE EN LOS EXTREMOS
+   ==================================== */
+
+/* Contenedor con gradiente en los extremos para indicar más contenido */
+.category-scroll-fade {
+  position: relative;
+}
+
+.category-scroll-fade::before,
+.category-scroll-fade::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.category-scroll-fade::before {
+  left: 0;
+  background: linear-gradient(to right, white, transparent);
+}
+
+.category-scroll-fade::after {
+  right: 0;
+  background: linear-gradient(to left, white, transparent);
+}
+
+/* ====================================
+   INDICADORES DE SCROLL (FLECHAS)
+   ==================================== */
+
+.category-scroll-indicators {
+  position: relative;
+}
+
+.scroll-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+  transition: all 0.2s ease;
+}
+
+.scroll-indicator:hover {
+  background: #f9fafb;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.scroll-indicator-left {
+  left: 8px;
+}
+
+.scroll-indicator-right {
+  right: 8px;
+}
+
+.scroll-indicator.hidden {
+  opacity: 0;
+  pointer-events: none;
+}

@@ -19,6 +19,7 @@ export async function addProduct(data: ProductFormData) {
       user_id: user.id,
       name: data.name,
       code: data.code,
+      barcode: data.barcode || null,  // ✅ NUEVO: Guardar barcode
       category_id: data.category_id || null,
       stock_quantity: data.stock_quantity,
       minimum_stock: data.minimum_stock,
@@ -81,6 +82,7 @@ export async function updateProduct(productId: string, data: ProductFormData) {
     .update({
       name: data.name,
       code: data.code,
+      barcode: data.barcode || null,  // ✅ NUEVO: Actualizar barcode
       category_id: data.category_id || null,
       stock_quantity: data.stock_quantity,
       minimum_stock: data.minimum_stock,
@@ -179,6 +181,34 @@ export async function findProductByCode(code: string) {
       return { success: true, data: null }
     }
     console.error('Error finding product:', error)
+    return { error: error.message }
+  }
+
+  return { success: true, data: product }
+}
+
+// ✅ NUEVA FUNCIÓN: Buscar producto por barcode
+export async function findProductByBarcode(barcode: string) {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { error: 'No autenticado' }
+  }
+
+  const { data: product, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      category:categories(id, name, color, icon)
+    `)
+    .eq('barcode', barcode)
+    .eq('user_id', user.id)
+    .maybeSingle()  // ✅ Usa maybeSingle en lugar de single para no lanzar error si no existe
+
+  if (error) {
+    console.error('Error finding product by barcode:', error)
     return { error: error.message }
   }
 
