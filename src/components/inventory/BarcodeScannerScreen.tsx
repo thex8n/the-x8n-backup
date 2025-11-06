@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Html5Qrcode } from 'html5-qrcode'
+import { useEffect, useRef, useState } from 'react'
+import { BrowserMultiFormatReader } from '@zxing/browser'
+import { DecodeHintType, BarcodeFormat } from '@zxing/library'
 import { X, Scan, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { findProductByCode, incrementProductStock } from '@/app/actions/products'
@@ -16,12 +17,12 @@ export default function BarcodeScannerScreen({
   onClose,
   onProductNotFound
 }: BarcodeScannerScreenProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   const [isScanning, setIsScanning] = useState(true)
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [scannerError, setScannerError] = useState<string | null>(null)
-  const scannerRef = useRef<Html5Qrcode | null>(null)
-  const qrCodeRegionId = 'qr-reader'
+  const controlsRef = useRef<{ stop: () => void } | null>(null)
 
   const handleScan = async (decodedText: string) => {
     if (!isScanning || decodedText === lastScannedCode) return
@@ -44,8 +45,8 @@ export default function BarcodeScannerScreen({
           icon: '📦',
           duration: 2000,
         })
-        if (scannerRef.current) {
-          await scannerRef.current.stop()
+        if (controlsRef.current) {
+          controlsRef.current.stop()
         }
         onProductNotFound(decodedText)
         return
@@ -93,52 +94,40 @@ export default function BarcodeScannerScreen({
     let mounted = true
 
     const initScanner = async () => {
-      const element = document.getElementById(qrCodeRegionId)
-      if (!element) {
-        console.error('Element not found, retrying...')
-        return
-      }
-
       try {
-        const html5QrCode = new Html5Qrcode(qrCodeRegionId)
-        scannerRef.current = html5QrCode
+        const hints = new Map()
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          BarcodeFormat.QR_CODE,
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+        ])
 
-        const config = {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          formatsToSupport: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        const reader = new BrowserMultiFormatReader(hints)
+
+        if (!videoRef.current) {
+          setScannerError('Error al inicializar el video.')
+          return
         }
 
-        try {
-          await html5QrCode.start(
-            { facingMode: 'environment' },
-            config,
-            (decodedText) => {
-              if (mounted) {
-                handleScan(decodedText)
-              }
-            },
-            (errorMessage) => {
-              console.log('Scanning...')
+        const controls = await reader.decodeFromConstraints(
+          {
+            video: {
+              facingMode: { ideal: 'environment' }
             }
-          )
-        } catch (startError: any) {
-          console.error('Error with environment camera, trying default:', startError)
+          },
+          videoRef.current,
+          (result) => {
+            if (result && mounted) {
+              handleScan(result.getText())
+            }
+          }
+        )
 
-          await html5QrCode.start(
-            { facingMode: 'user' },
-            config,
-            (decodedText) => {
-              if (mounted) {
-                handleScan(decodedText)
-              }
-            },
-            (errorMessage) => {
-              console.log('Scanning...')
-            }
-          )
-        }
+        controlsRef.current = controls
 
         if (mounted) {
           setIsInitialized(true)
@@ -151,43 +140,35 @@ export default function BarcodeScannerScreen({
           setScannerError('Debes permitir el acceso a la cámara para escanear códigos de barras.')
         } else if (error.name === 'NotFoundError' || error.toString().includes('NotFoundError')) {
           setScannerError('No se encontró ninguna cámara en tu dispositivo.')
-        } else if (error.toString().includes('OverconstrainedError')) {
-          setScannerError('La cámara no cumple con los requisitos. Intenta con otro dispositivo.')
+        } else if (error.toString().includes('NotReadableError')) {
+          setScannerError('La cámara está siendo usada por otra aplicación.')
         } else {
           setScannerError(`Error: ${error.message || error.toString()}`)
         }
       }
     }
 
-    let retryCount = 0
-    const maxRetries = 10
-
-    const tryInit = () => {
-      const element = document.getElementById(qrCodeRegionId)
-      if (element && mounted) {
-        initScanner()
-      } else if (retryCount < maxRetries && mounted) {
-        retryCount++
-        setTimeout(tryInit, 100)
-      } else if (mounted) {
-        setScannerError('Error: No se pudo inicializar el escáner. Intenta recargar la página.')
-      }
-    }
-
-    tryInit()
+    const timer = setTimeout(() => {
+      initScanner()
+    }, 100)
 
     return () => {
       mounted = false
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch((err) => console.error('Error stopping scanner:', err))
+      clearTimeout(timer)
+      if (controlsRef.current) {
+        try {
+          controlsRef.current.stop()
+        } catch (err) {
+          console.error('Error stopping scanner:', err)
+        }
       }
     }
   }, [])
 
-  const handleClose = async () => {
-    if (scannerRef.current) {
+  const handleClose = () => {
+    if (controlsRef.current) {
       try {
-        await scannerRef.current.stop()
+        controlsRef.current.stop()
       } catch (err) {
         console.error('Error stopping scanner:', err)
       }
@@ -265,7 +246,26 @@ export default function BarcodeScannerScreen({
         </div>
 
         <div className="flex-1 relative bg-black overflow-hidden flex items-center justify-center">
-          <div id={qrCodeRegionId} className="w-full"></div>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover"
+          />
+
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64">
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl-lg"></div>
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr-lg"></div>
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl-lg"></div>
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br-lg"></div>
+
+              {isScanning && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 animate-scan"></div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="bg-gray-900 text-white px-6 py-8 text-center">
@@ -281,23 +281,20 @@ export default function BarcodeScannerScreen({
         </div>
       </div>
 
-      <style jsx global>{`
-        #${qrCodeRegionId} {
-          display: flex;
-          justify-content: center;
-          align-items: center;
+      <style jsx>{`
+        @keyframes scan {
+          0% {
+            top: 0;
+          }
+          50% {
+            top: 100%;
+          }
+          100% {
+            top: 0;
+          }
         }
-        #${qrCodeRegionId} > div {
-          width: 100% !important;
-          border: none !important;
-        }
-        #${qrCodeRegionId} video {
-          width: 100% !important;
-          height: auto !important;
-          object-fit: cover !important;
-        }
-        #qr-shaded-region {
-          border-color: rgba(59, 130, 246, 0.5) !important;
+        .animate-scan {
+          animation: scan 2s ease-in-out infinite;
         }
       `}</style>
     </div>
