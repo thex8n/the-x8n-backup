@@ -93,6 +93,12 @@ export default function BarcodeScannerScreen({
     let mounted = true
 
     const initScanner = async () => {
+      const element = document.getElementById(qrCodeRegionId)
+      if (!element) {
+        console.error('Element not found, retrying...')
+        return
+      }
+
       try {
         const html5QrCode = new Html5Qrcode(qrCodeRegionId)
         scannerRef.current = html5QrCode
@@ -153,13 +159,25 @@ export default function BarcodeScannerScreen({
       }
     }
 
-    const timer = setTimeout(() => {
-      initScanner()
-    }, 100)
+    let retryCount = 0
+    const maxRetries = 10
+
+    const tryInit = () => {
+      const element = document.getElementById(qrCodeRegionId)
+      if (element && mounted) {
+        initScanner()
+      } else if (retryCount < maxRetries && mounted) {
+        retryCount++
+        setTimeout(tryInit, 100)
+      } else if (mounted) {
+        setScannerError('Error: No se pudo inicializar el escáner. Intenta recargar la página.')
+      }
+    }
+
+    tryInit()
 
     return () => {
       mounted = false
-      clearTimeout(timer)
       if (scannerRef.current) {
         scannerRef.current.stop().catch((err) => console.error('Error stopping scanner:', err))
       }
