@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
-import { X } from 'lucide-react'
+import { X, AlertCircle } from 'lucide-react'
 import { findProductByBarcode, incrementProductStock } from '@/app/actions/products'
 
 interface BarcodeScannerModalProps {
@@ -11,12 +11,16 @@ interface BarcodeScannerModalProps {
   onStockUpdated?: () => void
 }
 
+type ErrorType = 'camera' | 'network' | 'processing' | 'permission' | null
+
 export default function BarcodeScannerModal({ onClose, onProductNotFound, onStockUpdated }: BarcodeScannerModalProps) {
   const [error, setError] = useState<string | null>(null)
+  const [errorType, setErrorType] = useState<ErrorType>(null)
   const [scannedCode, setScannedCode] = useState<string | null>(null)
   const [isScannerActive, setIsScannerActive] = useState(true)
   const [notification, setNotification] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isScannerReady, setIsScannerReady] = useState(false)
   const lastScannedRef = useRef<string | null>(null)
   const lastScanTimeRef = useRef<number>(0)
   const scanLockRef = useRef<boolean>(false)
@@ -41,16 +45,36 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     }
   }, [isScannerActive])
 
+  const handleError = (message: string, type: ErrorType) => {
+    setError(message)
+    setErrorType(type)
+    setIsProcessing(false)
+    isProcessingRef.current = false
+    scanLockRef.current = false
+
+    // Vibración de error
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200])
+    }
+  }
+
+  const clearError = () => {
+    setError(null)
+    setErrorType(null)
+  }
+
   const startScanner = async () => {
     try {
+      clearError()
+      setIsScannerReady(false)
       const html5QrCode = new Html5Qrcode(scannerIdRef.current)
       html5QrCodeRef.current = html5QrCode
 
       await html5QrCode.start(
         { facingMode: 'environment' },
         {
-          fps: 10,  // Reducido a 10 FPS para mejor precisión y menos carga
-          qrbox: { width: 250, height: 250 },  // Área optimizada para enfoque
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
           disableFlip: false,
         },
@@ -74,8 +98,22 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         },
         () => {}
       )
-    } catch (err) {
-      setError('No se pudo acceder a la cámara')
+
+      // Marcar como listo después de iniciar exitosamente
+      setIsScannerReady(true)
+    } catch (err: any) {
+      console.error('Error al iniciar escáner:', err)
+      setIsScannerReady(false)
+
+      // Determinar tipo de error
+      const errorMessage = err?.message || ''
+      if (errorMessage.includes('Permission') || errorMessage.includes('NotAllowedError')) {
+        handleError('Se necesitan permisos de cámara para escanear códigos', 'permission')
+      } else if (errorMessage.includes('NotFoundError') || errorMessage.includes('NotReadableError')) {
+        handleError('No se encontró ninguna cámara disponible', 'camera')
+      } else {
+        handleError('No se pudo iniciar la cámara. Intenta recargar la página.', 'camera')
+      }
     }
   }
 
@@ -84,6 +122,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       try {
         await html5QrCodeRef.current.stop()
         html5QrCodeRef.current.clear()
+        // NO resetear isScannerReady aquí - solo cuando se cierra el modal
       } catch (err) {
         console.error(err)
       }
@@ -105,11 +144,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       const result = await findProductByBarcode(barcode)
 
       if (result.error) {
-        setError(result.error)
-        setIsProcessing(false)
-        isProcessingRef.current = false
-        scanLockRef.current = false
-        setIsScannerActive(true) // Reactivar scanner en caso de error
+        handleError(
+          'No se pudo buscar el producto. Verifica tu conexión e intenta nuevamente.',
+          'network'
+        )
+        setIsScannerActive(true)
         return
       }
 
@@ -118,10 +157,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         const incrementResult = await incrementProductStock(result.data.id)
 
         if (incrementResult.error) {
-          setError(incrementResult.error)
-          isProcessingRef.current = false
-          scanLockRef.current = false
-          setIsScannerActive(true) // Reactivar scanner en caso de error
+          handleError(
+            `No se pudo actualizar el stock de "${result.data.name}". Intenta nuevamente.`,
+            'processing'
+          )
+          setIsScannerActive(true)
         } else {
           // Mostrar notificación de éxito
           setNotification(`+1 ${result.data.name}`)
@@ -141,14 +181,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
             lastScannedRef.current = null
             scanLockRef.current = false
             isProcessingRef.current = false
-            setIsScannerActive(true) // REACTIVAR SCANNER para siguiente escaneo
+            setIsScannerActive(true)
           }, 2000)
         }
       } else {
         // ❌ PRODUCTO NO EXISTE: Abrir formulario
-        // FIX CRÍTICO: Detener COMPLETAMENTE el scanner antes de abrir formulario
-
-        // Marcar como NO procesando para prevenir más llamadas
         isProcessingRef.current = false
         scanLockRef.current = false
         lastScannedRef.current = null
@@ -156,17 +193,26 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         // Detener el scanner completamente
         await stopScanner()
 
-        // NO reactivar scanner - se queda pausado porque se abre el formulario
-        // Esperar un momento para que el scanner se detenga completamente
+        // Esperar para que el scanner se detenga completamente
         setTimeout(() => {
           onProductNotFound(barcode)
         }, 100)
       }
-    } catch (err) {
-      setError('Error al procesar el código')
-      isProcessingRef.current = false
-      scanLockRef.current = false
-      setIsScannerActive(true) // Reactivar scanner en caso de error
+    } catch (err: any) {
+      console.error('Error al procesar código:', err)
+
+      // Determinar si es error de red o de procesamiento
+      const isNetworkError = err?.message?.includes('fetch') ||
+                           err?.message?.includes('network') ||
+                           !navigator.onLine
+
+      handleError(
+        isNetworkError
+          ? 'Sin conexión a internet. Verifica tu red e intenta nuevamente.'
+          : 'Error inesperado al procesar el código. Intenta nuevamente.',
+        isNetworkError ? 'network' : 'processing'
+      )
+      setIsScannerActive(true)
     }
 
     setIsProcessing(false)
@@ -178,7 +224,9 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   }
 
   const toggleScanner = () => {
-    setIsScannerActive(!isScannerActive)
+    if (isScannerReady) {
+      setIsScannerActive(!isScannerActive)
+    }
   }
 
   return (
@@ -201,20 +249,20 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         <X className="w-6 h-6 text-gray-800" />
       </button>
 
-      {/* Área de escaneo con esquinas */}
-      <div 
+      {/* Área de escaneo con esquinas amarillas solamente */}
+      <div
         onClick={toggleScanner}
         className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 z-20 cursor-pointer"
       >
         {/* Esquina superior izquierda */}
         <div className="absolute top-0 left-0 w-12 h-12 border-l-4 border-t-4 border-yellow-400 rounded-tl-2xl"></div>
-        
+
         {/* Esquina superior derecha */}
         <div className="absolute top-0 right-0 w-12 h-12 border-r-4 border-t-4 border-yellow-400 rounded-tr-2xl"></div>
-        
+
         {/* Esquina inferior izquierda */}
         <div className="absolute bottom-0 left-0 w-12 h-12 border-l-4 border-b-4 border-yellow-400 rounded-bl-2xl"></div>
-        
+
         {/* Esquina inferior derecha */}
         <div className="absolute bottom-0 right-0 w-12 h-12 border-r-4 border-b-4 border-yellow-400 rounded-br-2xl"></div>
       </div>
@@ -265,33 +313,159 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       </div>
 
       {/* Cámara del escáner - posicionada en el área del recuadro */}
-      {isScannerActive ? (
-        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 overflow-hidden rounded-2xl" style={{ zIndex: 15 }}>
+      {isProcessing ? (
+        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-black/50 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-4 p-4" style={{ zIndex: 15 }}>
+          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-white text-lg font-semibold tracking-wide">Verificando...</span>
+        </div>
+      ) : isScannerActive ? (
+        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 overflow-hidden rounded-2xl scanner-container" style={{ zIndex: 15 }}>
           <div id={scannerIdRef.current} className="w-full h-full" />
         </div>
+      ) : isScannerReady ? (
+        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center p-4" style={{ zIndex: 15 }}>
+          <div className="relative flex items-center justify-center">
+            <img
+              src="/imagen/scanner.png"
+              alt="QR Scanner"
+              className="w-56 h-56 object-contain opacity-20"
+            />
+            <span className="absolute text-white text-xl font-bold tracking-wider">TAP TO SCAN</span>
+          </div>
+        </div>
       ) : (
-        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-black rounded-2xl flex items-center justify-center" style={{ zIndex: 15 }}>
-          <span className="text-white text-2xl font-bold">Pausado</span>
+        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-black/50 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-4 p-4" style={{ zIndex: 15 }}>
+          <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-white text-sm font-medium tracking-wide">Iniciando cámara...</span>
         </div>
       )}
 
-      {/* Error */}
+      {/* Estilos para ocultar los bordes blancos del escáner */}
+      <style jsx global>{`
+        .scanner-container video {
+          border: none !important;
+          outline: none !important;
+        }
+
+        .scanner-container #qr-shaded-region {
+          border: none !important;
+        }
+
+        #${scannerIdRef.current} {
+          border: none !important;
+        }
+
+        #${scannerIdRef.current} video {
+          border: none !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+
+        #${scannerIdRef.current} canvas {
+          display: none !important;
+        }
+      `}</style>
+
+      {/* Error Modal Mejorado */}
       {error && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl z-30 shadow-2xl max-w-sm mx-4">
-          <p className="text-red-600 mb-4 text-center font-semibold">{error}</p>
-          <button
-            onClick={() => {
-              setError(null)
-              setIsProcessing(false)
-              lastScannedRef.current = null
-              scanLockRef.current = false
-              isProcessingRef.current = false
-              setIsScannerActive(true) // Reactivar scanner al reintentar
-            }} 
-            className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-semibold"
-          >
-            Reintentar
-          </button>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-30">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Cabecera del error con color según tipo */}
+            <div className={`p-6 ${
+              errorType === 'camera' ? 'bg-orange-50' :
+              errorType === 'permission' ? 'bg-yellow-50' :
+              errorType === 'network' ? 'bg-blue-50' :
+              'bg-red-50'
+            }`}>
+              <div className="flex items-center justify-center mb-3">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  errorType === 'camera' ? 'bg-orange-100' :
+                  errorType === 'permission' ? 'bg-yellow-100' :
+                  errorType === 'network' ? 'bg-blue-100' :
+                  'bg-red-100'
+                }`}>
+                  {errorType === 'camera' ? (
+                    <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  ) : errorType === 'permission' ? (
+                    <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  ) : errorType === 'network' ? (
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                    </svg>
+                  ) : (
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  )}
+                </div>
+              </div>
+              <h3 className={`text-xl font-bold text-center mb-2 ${
+                errorType === 'camera' ? 'text-orange-900' :
+                errorType === 'permission' ? 'text-yellow-900' :
+                errorType === 'network' ? 'text-blue-900' :
+                'text-red-900'
+              }`}>
+                {errorType === 'camera' ? 'Error de Cámara' :
+                 errorType === 'permission' ? 'Permisos Requeridos' :
+                 errorType === 'network' ? 'Sin Conexión' :
+                 'Error al Procesar'}
+              </h3>
+            </div>
+
+            {/* Cuerpo del error */}
+            <div className="p-6">
+              <p className="text-gray-700 text-center mb-6 leading-relaxed">
+                {error}
+              </p>
+
+              {/* Botones de acción */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    clearError()
+                    setIsProcessing(false)
+                    lastScannedRef.current = null
+                    scanLockRef.current = false
+                    isProcessingRef.current = false
+                    setIsScannerActive(true)
+                  }}
+                  className={`w-full px-4 py-3 text-white rounded-xl font-semibold transition-all active:scale-95 ${
+                    errorType === 'camera' ? 'bg-orange-600 hover:bg-orange-700' :
+                    errorType === 'permission' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                    errorType === 'network' ? 'bg-blue-600 hover:bg-blue-700' :
+                    'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  {errorType === 'permission' ? 'Conceder Permisos' : 'Reintentar'}
+                </button>
+
+                <button
+                  onClick={handleClose}
+                  className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all active:scale-95"
+                >
+                  Cerrar Escáner
+                </button>
+              </div>
+
+              {/* Consejo adicional según tipo de error */}
+              {errorType === 'permission' && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-800 text-center">
+                    💡 Ve a la configuración de tu navegador y permite el acceso a la cámara
+                  </p>
+                </div>
+              )}
+              {errorType === 'network' && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800 text-center">
+                    💡 Verifica tu conexión WiFi o datos móviles
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

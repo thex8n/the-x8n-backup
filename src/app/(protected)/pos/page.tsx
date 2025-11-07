@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Scan } from 'lucide-react'
+import { DollarSign } from 'lucide-react'
 import POSModeSelectionModal from '@/components/pos/POSModeSelectionModal'
 import POSBarcodeScannerModal from '@/components/pos/POSBarcodeScannerModal'
 import { CartItem } from '@/types/cart'
@@ -33,7 +33,7 @@ export default function POSPage() {
           onClick={() => setShowModeSelection(true)}
           className="hidden md:flex w-full bg-green-600 text-white font-semibold py-6 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all items-center justify-center gap-3"
         >
-          <Scan className="w-8 h-8" />
+          <DollarSign className="w-8 h-8" />
           <span className="text-xl">Abrir Terminal de Ventas</span>
         </button>
 
@@ -73,9 +73,14 @@ export default function POSPage() {
       {/* Botón flotante para abrir scanner - Solo móvil */}
       <button
         onClick={() => setShowModeSelection(true)}
-        className="md:hidden fixed bottom-24 right-4 w-16 h-16 bg-black text-white rounded-2xl shadow-2xl transition-all flex items-center justify-center z-40 active:scale-95"
+        className="md:hidden fixed w-16 h-16 bg-black text-white rounded-2xl shadow-2xl transition-all flex items-center justify-center z-40 active:scale-95"
+        style={{ 
+          bottom: '6rem',
+          right: '1.5rem'
+        }}
+        aria-label="Abrir Terminal de Ventas"
       >
-        <Scan className="w-8 h-8" strokeWidth={2.5} />
+        <DollarSign className="w-8 h-8" strokeWidth={2.5} />
       </button>
 
       {/* Modal de Selección de Modo */}

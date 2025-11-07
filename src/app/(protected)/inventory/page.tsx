@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Plus } from 'lucide-react'
 import AddProductForm from '@/components/inventory/AddProductForm'
 import AddCategoryForm from '@/components/inventory/AddCategoryForm'
 import EditProductForm from '@/components/inventory/EditProductForm'
@@ -45,7 +46,6 @@ export default function InventoryPage() {
   const loadCategories = async () => {
     const result = await getCategories()
     if ('data' in result && result.data) {
-      // Ordenar categorías por fecha de creación (las más nuevas al final)
       const sortedCategories = result.data.sort((a, b) => {
         return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
       })
@@ -103,7 +103,6 @@ export default function InventoryPage() {
     setShowAddProductForm(true)
   }
 
-  // Drag and Drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index)
     e.dataTransfer.effectAllowed = 'move'
@@ -137,15 +136,12 @@ export default function InventoryPage() {
 
   return (
     <>
-      <MobileSearchHeader 
+      <MobileSearchHeader
         onSearch={handleSearch}
         searchQuery={searchQuery}
       />
 
-      <div className="md:hidden h-16"></div>
-
       <div className="p-8 pb-32">
-        {/* Título a la izquierda, Barra de búsqueda centrada y botón Crear a la derecha */}
         <div className="hidden md:block mb-6 -mt-4">
           <div className="flex items-center justify-between mb-6 relative">
             <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
@@ -170,7 +166,6 @@ export default function InventoryPage() {
           <ProductStats products={filteredProducts} />
         </div>
 
-        {/* Categorías como chips con botón + y drag & drop */}
         <div className="hidden md:flex mb-6 items-center gap-3 flex-wrap">
           <button
             onClick={() => setSelectedCategoryId(null)}
@@ -238,17 +233,14 @@ export default function InventoryPage() {
 
         <button
           onClick={() => setShowBarcodeScanner(true)}
-          className="md:hidden fixed w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-200 flex items-center justify-center"
+          className="md:hidden fixed w-16 h-16 bg-black text-white rounded-2xl shadow-2xl transition-all flex items-center justify-center z-40 active:scale-95"
           style={{ 
             bottom: '6rem',
-            right: '1.5rem',
-            zIndex: 40
+            right: '1.5rem'
           }}
           aria-label="Escanear código"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
+          <Plus className="w-10 h-10" strokeWidth={3} />
         </button>
 
         {showBarcodeScanner && (
