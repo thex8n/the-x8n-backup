@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import { Html5Qrcode } from 'html5-qrcode'
 import { X, AlertCircle } from 'lucide-react'
+import { CiCircleCheck } from 'react-icons/ci'
 import { findProductByBarcode, incrementProductStock } from '@/app/actions/products'
 
 interface BarcodeScannerModalProps {
@@ -27,7 +28,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   const isProcessingRef = useRef<boolean>(false)
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
   const scannerIdRef = useRef('barcode-scanner')
-  const SCAN_COOLDOWN_MS = 500 // Cooldown de 500ms entre escaneos
+  const SCAN_COOLDOWN_MS = 500
 
   useEffect(() => {
     if (isScannerActive) {
@@ -36,7 +37,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       stopScanner()
     }
     return () => {
-      // Cleanup completo al desmontar
       stopScanner()
       lastScannedRef.current = null
       lastScanTimeRef.current = 0
@@ -52,7 +52,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     isProcessingRef.current = false
     scanLockRef.current = false
 
-    // Vibración de error
     if (navigator.vibrate) {
       navigator.vibrate([200, 100, 200])
     }
@@ -79,11 +78,9 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           disableFlip: false,
         },
         (decodedText) => {
-          // Protección robusta contra escaneos múltiples
           const now = Date.now()
           const timeSinceLastScan = now - lastScanTimeRef.current
 
-          // Verificar: lock, cooldown, duplicados, y que NO esté procesando
           if (
             !scanLockRef.current &&
             !isProcessingRef.current &&
@@ -99,13 +96,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         () => {}
       )
 
-      // Marcar como listo después de iniciar exitosamente
       setIsScannerReady(true)
     } catch (err: any) {
       console.error('Error al iniciar escáner:', err)
       setIsScannerReady(false)
 
-      // Determinar tipo de error
       const errorMessage = err?.message || ''
       if (errorMessage.includes('Permission') || errorMessage.includes('NotAllowedError')) {
         handleError('Se necesitan permisos de cámara para escanear códigos', 'permission')
@@ -122,7 +117,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       try {
         await html5QrCodeRef.current.stop()
         html5QrCodeRef.current.clear()
-        // NO resetear isScannerReady aquí - solo cuando se cierra el modal
       } catch (err) {
         console.error(err)
       }
@@ -130,17 +124,14 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   }
 
   const handleBarcodeScanned = async (barcode: string) => {
-    // PAUSAR SCANNER INMEDIATAMENTE
     setIsScannerActive(false)
     setIsProcessing(true)
     setScannedCode(barcode)
     lastScannedRef.current = barcode
 
-    // Vibración inicial
-    if (navigator.vibrate) navigator.vibrate(100)
+    if (navigator.vibrate) navigator.vibrate(50)
 
     try {
-      // Buscar producto por barcode
       const result = await findProductByBarcode(barcode)
 
       if (result.error) {
@@ -153,7 +144,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       }
 
       if (result.data) {
-        // ✅ PRODUCTO EXISTE: Incrementar stock
         const incrementResult = await incrementProductStock(result.data.id)
 
         if (incrementResult.error) {
@@ -163,18 +153,14 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           )
           setIsScannerActive(true)
         } else {
-          // Mostrar notificación de éxito
           setNotification(`+1 ${result.data.name}`)
 
-          // Vibración de éxito
           if (navigator.vibrate) navigator.vibrate([100, 50, 100])
 
-          // Llamar callback para refrescar la lista de productos
           if (onStockUpdated) {
             onStockUpdated()
           }
 
-          // Limpiar notificación y refs después de 2 segundos, luego REACTIVAR SCANNER
           setTimeout(() => {
             setNotification(null)
             setScannedCode(null)
@@ -182,18 +168,15 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
             scanLockRef.current = false
             isProcessingRef.current = false
             setIsScannerActive(true)
-          }, 2000)
+          }, 1000)
         }
       } else {
-        // ❌ PRODUCTO NO EXISTE: Abrir formulario
         isProcessingRef.current = false
         scanLockRef.current = false
         lastScannedRef.current = null
 
-        // Detener el scanner completamente
         await stopScanner()
 
-        // Esperar para que el scanner se detenga completamente
         setTimeout(() => {
           onProductNotFound(barcode)
         }, 100)
@@ -201,7 +184,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     } catch (err: any) {
       console.error('Error al procesar código:', err)
 
-      // Determinar si es error de red o de procesamiento
       const isNetworkError = err?.message?.includes('fetch') ||
                            err?.message?.includes('network') ||
                            !navigator.onLine
@@ -231,7 +213,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
 
   return (
     <div className="fixed inset-0 bg-[linear-gradient(to_bottom_right,#4f46e5,#9333ea,#2563eb)] overflow-y-auto" style={{ zIndex: 60 }}>
-      {/* Patrón de fondo decorativo */}
       <div className="absolute inset-0 opacity-10">
         <div className="grid grid-cols-8 grid-rows-12 h-full w-full">
           {[...Array(96)].map((_, i) => (
@@ -240,7 +221,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         </div>
       </div>
 
-      {/* Botón cerrar */}
       <button
         onClick={handleClose}
         className="absolute top-6 right-6 p-2 bg-white/90 rounded-full z-10 shadow-lg hover:bg-white transition-all"
@@ -249,39 +229,22 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         <X className="w-6 h-6 text-gray-800" />
       </button>
 
-      {/* Área de escaneo con esquinas amarillas solamente */}
       <div
         onClick={toggleScanner}
         className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 z-20 cursor-pointer"
       >
-        {/* Esquina superior izquierda */}
         <div className="absolute top-0 left-0 w-12 h-12 border-l-4 border-t-4 border-yellow-400 rounded-tl-2xl"></div>
-
-        {/* Esquina superior derecha */}
         <div className="absolute top-0 right-0 w-12 h-12 border-r-4 border-t-4 border-yellow-400 rounded-tr-2xl"></div>
-
-        {/* Esquina inferior izquierda */}
         <div className="absolute bottom-0 left-0 w-12 h-12 border-l-4 border-b-4 border-yellow-400 rounded-bl-2xl"></div>
-
-        {/* Esquina inferior derecha */}
         <div className="absolute bottom-0 right-0 w-12 h-12 border-r-4 border-b-4 border-yellow-400 rounded-br-2xl"></div>
       </div>
 
-      {/* Código escaneado */}
       {scannedCode && !notification && (
         <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-6 py-3 rounded-xl z-20 shadow-2xl">
           <p className="text-lg font-bold">{scannedCode}</p>
         </div>
       )}
 
-      {/* Notificación de éxito */}
-      {notification && (
-        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-xl z-20 shadow-2xl animate-bounce">
-          <p className="text-lg font-bold">{notification}</p>
-        </div>
-      )}
-
-      {/* Sección inferior blanca */}
       <div className="absolute bottom-0 left-0 right-0 h-96 bg-white rounded-t-3xl z-10 shadow-2xl">
         <div className="flex flex-col items-center justify-center h-full px-6">
           {isProcessing ? (
@@ -290,14 +253,10 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
               <p className="text-gray-600 text-center text-sm">Procesando...</p>
             </div>
           ) : notification ? (
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-green-600 font-bold text-lg mb-2">¡Stock actualizado!</p>
-              <p className="text-gray-500 text-sm">Puedes seguir escaneando</p>
+            <div className="text-center animate-in fade-in duration-300">
+              <p className="text-gray-800 font-bold text-2xl mb-2">{notification}</p>
+              <p className="text-green-600 font-semibold text-lg mb-1">Stock actualizado</p>
+              <p className="text-gray-500 text-sm">Reactivando escáner...</p>
             </div>
           ) : (
             <div className="text-center">
@@ -312,11 +271,21 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         </div>
       </div>
 
-      {/* Cámara del escáner - posicionada en el área del recuadro */}
-      {isProcessing ? (
+      {isProcessing || notification ? (
         <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-black/50 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-4 p-4" style={{ zIndex: 15 }}>
-          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-white text-lg font-semibold tracking-wide">Verificando...</span>
+          {notification ? (
+            <>
+              <div className="animate-in zoom-in duration-300">
+                <CiCircleCheck className="w-16 h-16 text-green-400 animate-pulse" strokeWidth={1} />
+              </div>
+              <span className="text-white text-lg font-semibold tracking-wide animate-in fade-in duration-500">¡Agregado!</span>
+            </>
+          ) : (
+            <>
+              <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-white text-lg font-semibold tracking-wide">Verificando...</span>
+            </>
+          )}
         </div>
       ) : isScannerActive ? (
         <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 overflow-hidden rounded-2xl scanner-container" style={{ zIndex: 15 }}>
@@ -340,7 +309,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         </div>
       )}
 
-      {/* Estilos para ocultar los bordes blancos del escáner */}
       <style jsx global>{`
         .scanner-container video {
           border: none !important;
@@ -366,11 +334,9 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         }
       `}</style>
 
-      {/* Error Modal Mejorado */}
       {error && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-30">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
-            {/* Cabecera del error con color según tipo */}
             <div className={`p-6 ${
               errorType === 'camera' ? 'bg-orange-50' :
               errorType === 'permission' ? 'bg-yellow-50' :
@@ -414,13 +380,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
               </h3>
             </div>
 
-            {/* Cuerpo del error */}
             <div className="p-6">
               <p className="text-gray-700 text-center mb-6 leading-relaxed">
                 {error}
               </p>
 
-              {/* Botones de acción */}
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => {
@@ -442,14 +406,16 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
                 </button>
 
                 <button
-                  onClick={handleClose}
+                  onClick={() => {
+                    if (navigator.vibrate) navigator.vibrate(50)
+                    handleClose()
+                  }}
                   className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all active:scale-95"
                 >
                   Cerrar Escáner
                 </button>
               </div>
 
-              {/* Consejo adicional según tipo de error */}
               {errorType === 'permission' && (
                 <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs text-yellow-800 text-center">
