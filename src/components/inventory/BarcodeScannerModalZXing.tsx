@@ -269,7 +269,7 @@ export default function BarcodeScannerModalZXing({ onClose, onProductNotFound, o
 
       <div
         onClick={toggleScanner}
-        className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 z-20 cursor-pointer"
+        className={`absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 ${isScannerActive && isScannerReady && !isProcessing && !notification ? 'z-20 cursor-pointer' : 'z-10 pointer-events-none'}`}
       >
         <div className="absolute top-0 left-0 w-12 h-12 border-l-4 border-t-4 border-yellow-400 rounded-tl-2xl"></div>
         <div className="absolute top-0 right-0 w-12 h-12 border-r-4 border-t-4 border-yellow-400 rounded-tr-2xl"></div>
@@ -336,7 +336,11 @@ export default function BarcodeScannerModalZXing({ onClose, onProductNotFound, o
           />
         </div>
       ) : isScannerReady ? (
-        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center p-4" style={{ zIndex: 15 }}>
+        <div
+          onClick={() => setIsScannerActive(true)}
+          className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center p-4 cursor-pointer hover:bg-black/60 transition-all"
+          style={{ zIndex: 15 }}
+        >
           <div className="relative flex items-center justify-center">
             <img
               src="/imagen/scanner.png"
