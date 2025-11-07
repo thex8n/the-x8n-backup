@@ -67,6 +67,16 @@ export default function BarcodeScannerModalZXing({ onClose, onProductNotFound, o
       clearError()
       setIsScannerReady(false)
 
+      // Detener y limpiar el escáner anterior si existe
+      if (codeReaderRef.current) {
+        try {
+          codeReaderRef.current.reset()
+        } catch (err) {
+          console.log('Limpiando escáner anterior:', err)
+        }
+        codeReaderRef.current = null
+      }
+
       const codeReader = new BrowserMultiFormatReader()
       codeReaderRef.current = codeReader
 
@@ -140,8 +150,11 @@ export default function BarcodeScannerModalZXing({ onClose, onProductNotFound, o
     if (codeReaderRef.current) {
       try {
         codeReaderRef.current.reset()
+        codeReaderRef.current = null
       } catch (err) {
-        console.error('Error stopping scanner:', err)
+        console.error('Error al detener escáner:', err)
+        // Forzar limpieza incluso si hay error
+        codeReaderRef.current = null
       }
     }
   }

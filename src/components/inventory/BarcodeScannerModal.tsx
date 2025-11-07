@@ -66,6 +66,18 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     try {
       clearError()
       setIsScannerReady(false)
+
+      // Detener y limpiar el escáner anterior si existe
+      if (html5QrCodeRef.current) {
+        try {
+          await html5QrCodeRef.current.stop()
+          html5QrCodeRef.current.clear()
+        } catch (err) {
+          console.log('Limpiando escáner anterior:', err)
+        }
+        html5QrCodeRef.current = null
+      }
+
       const html5QrCode = new Html5Qrcode(scannerIdRef.current)
       html5QrCodeRef.current = html5QrCode
 
@@ -117,8 +129,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       try {
         await html5QrCodeRef.current.stop()
         html5QrCodeRef.current.clear()
+        html5QrCodeRef.current = null
       } catch (err) {
-        console.error(err)
+        console.error('Error al detener escáner:', err)
+        // Forzar limpieza incluso si hay error
+        html5QrCodeRef.current = null
       }
     }
   }
