@@ -12,7 +12,7 @@ import { PRODUCT_MESSAGES } from '@/constants/validation'
 
 interface AddProductFormProps {
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (product?: any) => void  // 👈 Ahora acepta el producto como parámetro opcional
   initialCode?: string | null
   initialBarcode?: string | null
 }
@@ -106,7 +106,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
       setError(result.error)
       setLoading(false)
     } else {
-      onSuccess()
+      onSuccess(result.data)  // 👈 Pasar el producto creado
       onClose()
     }
   }
@@ -125,7 +125,8 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 overflow-y-auto"
+      className="fixed inset-0 bg-black/30 flex items-start justify-center overflow-y-auto"
+      style={{ zIndex: 70 }}
       onClick={onClose}
     >
       <div

@@ -7,6 +7,7 @@ interface BarcodeScannerModalProps {
   onClose: () => void
   onProductNotFound?: (barcode: string) => void
   onStockUpdated?: () => void
+  initialHistory?: ScannedProduct[]
 }
 
 interface ScannedProduct {
@@ -18,17 +19,25 @@ interface ScannedProduct {
   stockAfter: number
 }
 
-export default function BarcodeScannerModal({ onClose, onProductNotFound, onStockUpdated }: BarcodeScannerModalProps) {
+export default function BarcodeScannerModal({ onClose, onProductNotFound, onStockUpdated, initialHistory = [] }: BarcodeScannerModalProps) {
   const scannerRef = useRef<HTMLDivElement>(null)
   const [scannedCode, setScannedCode] = useState<string>('')
   const [isCameraReady, setIsCameraReady] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
-  const [scanHistory, setScanHistory] = useState<ScannedProduct[]>([])
+  const [scanHistory, setScanHistory] = useState<ScannedProduct[]>(initialHistory)
+  const [showConfirmClose, setShowConfirmClose] = useState(false)
   const html5QrCodeRef = useRef<any>(null)
   const isProcessingRef = useRef<boolean>(false)
   const lastScanTimeRef = useRef<number>(0)
   const scanCountRef = useRef<number>(0)
+
+  // Sincronizar con initialHistory cuando cambie (por ejemplo, cuando se agrega un producto)
+  useEffect(() => {
+    if (initialHistory.length > 0) {
+      setScanHistory(initialHistory)
+    }
+  }, [initialHistory])
 
   useEffect(() => {
     let isMounted = true
@@ -115,7 +124,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     setMessage(null)
 
     try {
-      const { findProductByBarcode, incrementProductStock } = await import('@/app/actions/products')
+      const { findProductByBarcode, incrementProductStock, saveInventoryHistory } = await import('@/app/actions/products')
 
       const findResult = await findProductByBarcode(barcode)
 
@@ -144,15 +153,31 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
 
         const stockAfter = updateResult.data?.stock_quantity || stockBefore + 1
 
-        // Agregar al historial
-        setScanHistory(prev => [{
-          id: findResult.data.id,
-          name: findResult.data.name,
-          barcode: barcode,
-          timestamp: new Date(),
-          stockBefore: stockBefore,
-          stockAfter: stockAfter
-        }, ...prev])
+        // 📦 Guardar en el historial de la base de datos
+        await saveInventoryHistory(
+          findResult.data.id,
+          findResult.data.name,
+          barcode,
+          stockBefore,
+          stockAfter
+        )
+
+        // Agregar al historial visual del modal
+        setScanHistory(prev => {
+          const newHistory = [{
+            id: findResult.data.id,
+            name: findResult.data.name,
+            barcode: barcode,
+            timestamp: new Date(),
+            stockBefore: stockBefore,
+            stockAfter: stockAfter
+          }, ...prev]
+
+          // Guardar en localStorage
+          localStorage.setItem('scanner_history', JSON.stringify(newHistory))
+
+          return newHistory
+        })
 
         setMessage({
           type: 'success',
@@ -190,9 +215,23 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   }
 
   const handleClose = async () => {
+    // Si hay escaneos en el historial, mostrar confirmación
+    if (scanHistory.length > 0) {
+      setShowConfirmClose(true)
+      return
+    }
+
+    // Si no hay escaneos, cerrar directamente
+    await closeScanner()
+  }
+
+  const closeScanner = async () => {
     isProcessingRef.current = false
     lastScanTimeRef.current = 0
     scanCountRef.current = 0
+
+    // Limpiar localStorage al cerrar
+    localStorage.removeItem('scanner_history')
 
     if (scanCountRef.current > 0) {
       try {
@@ -240,6 +279,33 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       >
         <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" />
       </button>
+
+      {/* Modal de confirmación */}
+      {showConfirmClose && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-3">¿Cerrar escáner?</h3>
+            <p className="text-gray-600 mb-6">
+              Has escaneado {scanHistory.length} {scanHistory.length === 1 ? 'producto' : 'productos'}. 
+              Todos los cambios ya están guardados.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmClose(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+              >
+                Continuar escaneando
+              </button>
+              <button
+                onClick={closeScanner}
+                className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Área del escáner - Responsive */}
       <div className="absolute top-[20%] sm:top-[25%] md:top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 z-20">

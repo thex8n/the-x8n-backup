@@ -18,12 +18,23 @@ import { getCategories } from '@/app/actions/categories'
 import { ProductWithCategory } from '@/types/product'
 import { Category } from '@/types/category'
 
+interface ScannedProduct {
+  id: string
+  name: string
+  barcode: string
+  timestamp: Date
+  stockBefore: number
+  stockAfter: number
+}
+
 export default function InventoryPage() {
   const [showCreateMenu, setShowCreateMenu] = useState(false)
   const [showAddProductForm, setShowAddProductForm] = useState(false)
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
+  const [scannerHistory, setScannerHistory] = useState<ScannedProduct[]>([])
+  const [comesFromScanner, setComesFromScanner] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductWithCategory | null>(null)
   const [allProducts, setAllProducts] = useState<ProductWithCategory[]>([])
   const [filteredProducts, setFilteredProducts] = useState<ProductWithCategory[]>([])
@@ -99,8 +110,53 @@ export default function InventoryPage() {
 
   const handleProductNotFound = (barcode: string) => {
     setScannedBarcode(barcode)
-    setShowBarcodeScanner(false)
+    // No cerramos el escáner, solo abrimos el formulario sobre él
     setShowAddProductForm(true)
+  }
+
+  const handleProductAdded = async (newProduct: ProductWithCategory) => {
+    // Recargar productos
+    await loadProducts()
+
+    // Recuperar historial guardado desde localStorage
+    const savedHistory = localStorage.getItem('scanner_history')
+    let history: ScannedProduct[] = []
+
+    if (savedHistory) {
+      try {
+        history = JSON.parse(savedHistory).map((item: any) => ({
+          ...item,
+          timestamp: new Date(item.timestamp)
+        }))
+      } catch (err) {
+        console.error('Error parsing scanner history:', err)
+      }
+    }
+
+    // Agregar el nuevo producto al historial
+    const newHistoryItem: ScannedProduct = {
+      id: newProduct.id,
+      name: newProduct.name,
+      barcode: scannedBarcode || newProduct.barcode || '',
+      timestamp: new Date(),
+      stockBefore: 0,
+      stockAfter: newProduct.stock_quantity
+    }
+
+    history.unshift(newHistoryItem)
+
+    // Guardar el historial actualizado
+    setScannerHistory(history)
+    localStorage.setItem('scanner_history', JSON.stringify(history))
+
+    // Solo cerrar el formulario, el escáner permanece abierto
+    setShowAddProductForm(false)
+    setScannedBarcode(null)
+  }
+
+  const handleScannerClose = () => {
+    setShowBarcodeScanner(false)
+    setScannerHistory([]) // Limpiar historial al cerrar
   }
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -245,9 +301,10 @@ export default function InventoryPage() {
 
         {showBarcodeScanner && (
           <BarcodeScannerModal
-            onClose={() => setShowBarcodeScanner(false)}
+            onClose={handleScannerClose}
             onProductNotFound={handleProductNotFound}
             onStockUpdated={loadProducts}
+            initialHistory={scannerHistory}
           />
         )}
 
@@ -276,7 +333,7 @@ export default function InventoryPage() {
               setShowAddProductForm(false)
               setScannedBarcode(null)
             }}
-            onSuccess={handleSuccess}
+            onSuccess={handleProductAdded}
             initialCode={null}
             initialBarcode={scannedBarcode}
           />
