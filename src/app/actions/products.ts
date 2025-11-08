@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/supabase/auth'
 import { ProductFormData } from '@/types/product'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { AUTH_MESSAGES, PRODUCT_MESSAGES } from '@/constants/validation'
 
 /**
@@ -276,6 +276,9 @@ export async function scanAndIncrementStock(barcode: string) {
  * @returns Success with product data (or null if not found) or error message
  */
 export async function findProductByBarcode(barcode: string) {
+  // Deshabilitar caché para evitar falsos negativos con productos recién agregados
+  noStore()
+
   const user = await requireAuth()
 
   if (!user) {
@@ -299,6 +302,9 @@ export async function findProductByBarcode(barcode: string) {
     console.error('Error finding product by barcode:', error)
     return { error: error.message }
   }
+
+  // Invalidar caché de la página de inventario
+  revalidatePath('/inventory')
 
   return { success: true, data: product }
 }
