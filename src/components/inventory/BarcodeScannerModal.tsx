@@ -56,6 +56,36 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     }
   }, [initialHistory])
 
+  // ✅ Confirmación al recargar/cerrar página (funciona en móvil y desktop)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (scanHistory.length > 0) {
+        // Mostrar el diálogo genérico del navegador
+        e.preventDefault()
+        e.returnValue = '' // Necesario para Chrome y otros navegadores modernos
+      }
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Detectar Escape para cerrar el modal
+      if (e.key === 'Escape' && !showConfirmClose) {
+        handleClose()
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('keydown', handleKeyDown)
+      // Limpiar localStorage cuando el componente se desmonte definitivamente
+      if (scanHistory.length > 0) {
+        localStorage.removeItem('scanner_history')
+      }
+    }
+  }, [scanHistory, showConfirmClose])
+
   useEffect(() => {
     let isMounted = true
 
@@ -334,6 +364,14 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         background: 'radial-gradient(ellipse at center, rgb(59, 130, 246), rgb(29, 78, 216), rgb(15, 23, 42), rgb(0, 0, 0))'
       }}
     >
+      <style jsx>{`
+        @font-face {
+          font-family: 'MomoTrust';
+          src: url('/fonts/Momo_Trust_Display/MomoTrustDisplay-Regular.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+        }
+      `}</style>
       {/* Patrón de fondo decorativo */}
       <div className="absolute inset-0 opacity-10">
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 grid-rows-8 sm:grid-rows-10 md:grid-rows-12 h-full w-full">
@@ -395,15 +433,19 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
                   setIsManuallyLocked(false) // Desbloquear escáner al cancelar
                 }}
                 className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+                style={{ fontFamily: 'MomoTrust, sans-serif' }}
               >
                 Cancelar
               </button>
               <button
                 onClick={closeScanner}
-                className="flex-1 px-4 py-2.5 text-black font-semibold rounded-lg transition-colors"
-                style={{ backgroundColor: '#88E788' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#70d970'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#88E788'}
+                className="flex-1 px-4 py-2.5 text-white font-semibold rounded-lg transition-all"
+                style={{ 
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  fontFamily: 'MomoTrust, sans-serif'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'}
               >
                 Aceptar
               </button>
