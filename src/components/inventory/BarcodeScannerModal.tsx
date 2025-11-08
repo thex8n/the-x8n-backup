@@ -1,6 +1,6 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { X, ScrollText, ClipboardClock } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 interface BarcodeScannerModalProps {
@@ -28,16 +28,23 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   const [scanHistory, setScanHistory] = useState<ScannedProduct[]>(initialHistory)
   const [showConfirmClose, setShowConfirmClose] = useState(false)
+  const [isManuallyLocked, setIsManuallyLocked] = useState(false)
   const html5QrCodeRef = useRef<any>(null)
   const isProcessingRef = useRef<boolean>(false)
   const lastScanTimeRef = useRef<number>(0)
   const scanCountRef = useRef<number>(0)
   const isPausedRef = useRef<boolean>(isPaused)
+  const isManuallyLockedRef = useRef<boolean>(false)
 
   // Actualizar ref cuando isPaused cambia
   useEffect(() => {
     isPausedRef.current = isPaused
   }, [isPaused])
+
+  // Actualizar ref cuando isManuallyLocked cambia
+  useEffect(() => {
+    isManuallyLockedRef.current = isManuallyLocked
+  }, [isManuallyLocked])
 
   // Sincronizar con initialHistory cuando cambie (por ejemplo, cuando se agrega un producto)
   useEffect(() => {
@@ -69,6 +76,12 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         }
 
         const qrCodeSuccessCallback = async (decodedText: string) => {
+          // Si el escáner está bloqueado manualmente, ignorar escaneos
+          if (isManuallyLockedRef.current) {
+            console.log('Escáner bloqueado manualmente, ignorando escaneo...')
+            return
+          }
+
           // Si el escáner está pausado (formulario abierto), ignorar escaneos
           if (isPausedRef.current) {
             console.log('Escáner pausado, ignorando escaneo...')
@@ -89,7 +102,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           setScannedCode(decodedText)
           
           if (navigator.vibrate) {
-            navigator.vibrate(200)
+            navigator.vibrate(50)
           }
 
           console.log(`Código escaneado #${scanCountRef.current}:`, decodedText)
@@ -201,7 +214,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         })
 
         if (navigator.vibrate) {
-          navigator.vibrate([100, 50, 100])
+          navigator.vibrate(50)
         }
 
         if (onStockUpdated) {
@@ -242,6 +255,10 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   }
 
   const closeScanner = async () => {
+    // Guardar si hubo escaneos ANTES de resetear
+    const hadScans = scanCountRef.current > 0
+
+    // Resetear refs
     isProcessingRef.current = false
     lastScanTimeRef.current = 0
     scanCountRef.current = 0
@@ -249,7 +266,8 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     // Limpiar localStorage al cerrar
     localStorage.removeItem('scanner_history')
 
-    if (scanCountRef.current > 0) {
+    // Revalidar inventario si hubo escaneos
+    if (hadScans) {
       try {
         const { revalidateInventory } = await import('@/app/actions/products')
         await revalidateInventory()
@@ -258,15 +276,22 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       }
     }
 
-    if (html5QrCodeRef.current) {
-      html5QrCodeRef.current.stop().then(() => {
-        onClose()
-      }).catch((err: any) => {
-        console.error('Error al cerrar:', err)
-        onClose()
-      })
-    } else {
-      onClose()
+    // NO intentar detener la cámara manualmente
+    // El useEffect cleanup (línea 120-132) se encargará cuando se desmonte
+    // Simplemente cerrar el modal
+    onClose()
+  }
+
+  const toggleLock = () => {
+    // No permitir cambiar el bloqueo si está procesando
+    if (isProcessingRef.current || isPausedRef.current) {
+      return
+    }
+
+    setIsManuallyLocked(!isManuallyLocked)
+
+    if (navigator.vibrate) {
+      navigator.vibrate(40)
     }
   }
 
@@ -290,10 +315,10 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       {/* Botón cerrar */}
       <button
         onClick={handleClose}
-        className="absolute top-4 right-4 sm:top-6 sm:right-6 p-1.5 sm:p-2 bg-white/90 rounded-full z-10 shadow-lg hover:bg-white transition-all"
+        className="absolute top-4 right-4 sm:top-6 sm:right-6 p-1.5 sm:p-2 transition-all"
         style={{ zIndex: 70 }}
       >
-        <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" />
+        <X className="w-8 h-8 sm:w-10 sm:h-10 text-white" strokeWidth={2.5} />
       </button>
 
       {/* Modal de confirmación */}
@@ -325,11 +350,37 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
 
       {/* Área del escáner - Responsive */}
       <div className="absolute top-[20%] sm:top-[25%] md:top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 z-20">
-        <div 
-          id="reader" 
+        <div
+          id="reader"
           ref={scannerRef}
           className="w-full h-full rounded-2xl overflow-hidden"
         ></div>
+
+        {/* Overlay de bloqueo (imagen con fondo negro cuando está bloqueado) */}
+        <button
+          onClick={toggleLock}
+          disabled={isProcessing || isPaused}
+          className={`absolute inset-0 rounded-2xl transition-all flex flex-col items-center justify-center ${
+            isProcessing || isPaused
+              ? 'cursor-not-allowed'
+              : 'cursor-pointer active:scale-[0.98]'
+          } ${
+            isManuallyLocked
+              ? 'bg-black'
+              : 'bg-transparent'
+          }`}
+        >
+          {isManuallyLocked && (
+            <>
+              <img
+                src="/imagen/scanner.png"
+                alt="Scanner locked"
+                className="w-3/4 h-3/4 object-contain opacity-10 absolute"
+              />
+              <span className="text-white text-xl sm:text-2xl font-bold z-10">Desbloquear</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Marco del escáner - Esquinas amarillas responsive */}
@@ -343,58 +394,35 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       {/* Panel inferior blanco con Historial */}
       <div className="absolute bottom-0 left-0 right-0 h-[55vh] sm:h-96 md:h-96 bg-white rounded-t-3xl z-10 shadow-2xl">
         <div className="flex flex-col h-full px-4 sm:px-6 py-4">
-          {/* Mensaje de escaneo actual */}
-          {isCameraReady && scannedCode && (
-            <div className={`border-2 rounded-xl p-3 sm:p-4 w-full mb-4 ${
-              message?.type === 'success' ? 'bg-green-50 border-green-500' :
-              message?.type === 'error' ? 'bg-red-50 border-red-500' :
-              message?.type === 'info' ? 'bg-blue-50 border-blue-500' :
-              'bg-green-50 border-green-500'
-            }`}>
-              {isProcessing ? (
-                <div className="text-center">
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 border-3 border-gray-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                  <p className="text-gray-700 text-xs sm:text-sm font-medium">Procesando...</p>
-                </div>
-              ) : message ? (
-                <>
-                  <p className={`text-xs font-semibold mb-1 text-center ${
-                    message.type === 'success' ? 'text-green-700' :
-                    message.type === 'error' ? 'text-red-700' :
-                    'text-blue-700'
-                  }`}>
-                    {message.text}
-                  </p>
-                  <p className="text-gray-900 text-sm sm:text-base font-bold text-center tracking-wider break-all">
-                    {scannedCode}
-                  </p>
-                </>
-              ) : null}
-            </div>
-          )}
-
           {/* Historial */}
           <div className="flex-1 overflow-hidden flex flex-col">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 flex items-center justify-between">
-              Historial
-              {scanHistory.length > 0 && (
-                <span className="text-sm font-normal text-gray-500">
-                  {scanHistory.length} {scanHistory.length === 1 ? 'producto' : 'productos'}
-                </span>
-              )}
-            </h3>
-            
+            <div className="mb-3">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ClipboardClock className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span>Historial</span>
+                  {isProcessing && (
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                </div>
+                {scanHistory.length > 0 && (
+                  <span className="text-sm font-normal text-gray-500">
+                    {scanHistory.length} {scanHistory.length === 1 ? 'producto' : 'productos'}
+                  </span>
+                )}
+              </h3>
+              <div className="h-px bg-gray-200 mt-3"></div>
+            </div>
+
             {scanHistory.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-gray-400">
                 <div className="text-center">
-                  <svg className="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <p className="text-sm">No hay productos escaneados</p>
+                  <ScrollText className="w-24 h-24 mx-auto mb-4 opacity-50" />
+                  <p className="text-base font-medium">No hay productos escaneados</p>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+              <div className="flex-1 overflow-y-auto space-y-2 pr-2 scrollbar-hide">
                 {scanHistory.map((item, index) => (
                   <div 
                     key={`${item.id}-${index}`}
