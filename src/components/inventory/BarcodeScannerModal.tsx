@@ -28,46 +28,42 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   const [scanHistory, setScanHistory] = useState<ScannedProduct[]>(initialHistory)
   const [showConfirmClose, setShowConfirmClose] = useState(false)
-  const [isManuallyLocked, setIsManuallyLocked] = useState(true) // Iniciar bloqueado por seguridad
-  const [scanSuccess, setScanSuccess] = useState(false) // Para animación de bordes verdes
-  const [scannedProductIds, setScannedProductIds] = useState<Set<string>>(new Set()) // IDs únicos de productos escaneados
-  const [newProductBarcodes, setNewProductBarcodes] = useState<Set<string>>(new Set()) // Barcodes únicos de productos nuevos
+  const [isManuallyLocked, setIsManuallyLocked] = useState(true)
+  const [scanSuccess, setScanSuccess] = useState(false)
+  const [scannedProductIds, setScannedProductIds] = useState<Set<string>>(new Set())
+  const [newProductBarcodes, setNewProductBarcodes] = useState<Set<string>>(new Set())
   const html5QrCodeRef = useRef<any>(null)
   const isProcessingRef = useRef<boolean>(false)
   const lastScanTimeRef = useRef<number>(0)
   const scanCountRef = useRef<number>(0)
   const isPausedRef = useRef<boolean>(isPaused)
-  const isManuallyLockedRef = useRef<boolean>(true) // Iniciar bloqueado por seguridad
+  const isManuallyLockedRef = useRef<boolean>(true)
+  const isClosingRef = useRef<boolean>(false) // ✅ Nuevo ref para controlar si está cerrando
 
-  // Actualizar ref cuando isPaused cambia
   useEffect(() => {
     isPausedRef.current = isPaused
   }, [isPaused])
 
-  // Actualizar ref cuando isManuallyLocked cambia
   useEffect(() => {
     isManuallyLockedRef.current = isManuallyLocked
   }, [isManuallyLocked])
 
-  // Sincronizar con initialHistory cuando cambie (por ejemplo, cuando se agrega un producto)
   useEffect(() => {
     if (initialHistory.length > 0) {
       setScanHistory(initialHistory)
     }
   }, [initialHistory])
 
-  // ✅ Confirmación al recargar/cerrar página (funciona en móvil y desktop)
+  // ✅ Confirmación al recargar/cerrar página
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (scanHistory.length > 0) {
-        // Mostrar el diálogo genérico del navegador
         e.preventDefault()
-        e.returnValue = '' // Necesario para Chrome y otros navegadores modernos
+        e.returnValue = ''
       }
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Detectar Escape para cerrar el modal
       if (e.key === 'Escape' && !showConfirmClose) {
         handleClose()
       }
@@ -79,8 +75,8 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       window.removeEventListener('keydown', handleKeyDown)
-      // Limpiar localStorage cuando el componente se desmonte definitivamente
-      if (scanHistory.length > 0) {
+      // ✅ SOLO limpiar localStorage si realmente está cerrando el modal
+      if (isClosingRef.current && scanHistory.length > 0) {
         localStorage.removeItem('scanner_history')
       }
     }
@@ -109,13 +105,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         }
 
         const qrCodeSuccessCallback = async (decodedText: string) => {
-          // Si el escáner está bloqueado manualmente, ignorar escaneos
           if (isManuallyLockedRef.current) {
             console.log('Escáner bloqueado manualmente, ignorando escaneo...')
             return
           }
 
-          // Si el escáner está pausado (formulario abierto), ignorar escaneos
           if (isPausedRef.current) {
             console.log('Escáner pausado, ignorando escaneo...')
             return
@@ -133,13 +127,12 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           isProcessingRef.current = true
           scanCountRef.current += 1
           setScannedCode(decodedText)
-          setScanSuccess(true) // Activar animación verde
+          setScanSuccess(true)
 
           if (navigator.vibrate) {
             navigator.vibrate(50)
           }
 
-          // Desactivar animación verde después de 200ms
           setTimeout(() => {
             setScanSuccess(false)
           }, 200)
@@ -181,6 +174,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           console.error('Error deteniendo escáner:', err)
         })
       }
+      // ✅ NO limpiar localStorage aquí, solo detener la cámara
     }
   }, [])
 
@@ -188,7 +182,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     setIsProcessing(true)
     setMessage(null)
 
-    // Limpiar espacios en blanco del código de barras
     const cleanBarcode = barcode.trim()
 
     try {
@@ -221,7 +214,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
 
         const stockAfter = updateResult.data?.stock_quantity || stockBefore + 1
 
-        // 📦 Guardar en el historial de la base de datos
         await saveInventoryHistory(
           findResult.data.id,
           findResult.data.name,
@@ -230,7 +222,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           stockAfter
         )
 
-        // Agregar al historial visual del modal
         setScanHistory(prev => {
           const newHistory = [{
             id: findResult.data.id,
@@ -241,7 +232,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
             stockAfter: stockAfter
           }, ...prev]
 
-          // Guardar en localStorage
+          // ✅ Guardar en localStorage (se mantiene hasta cerrar el modal)
           localStorage.setItem('scanner_history', JSON.stringify(newHistory))
 
           return newHistory
@@ -260,7 +251,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           onStockUpdated()
         }
 
-        // Agregar ID único de producto escaneado
         setScannedProductIds(prev => new Set(prev).add(findResult.data.id))
       } else {
         setMessage({
@@ -286,18 +276,14 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   }
 
   const handleClose = async () => {
-    // Si hay escaneos en el historial, mostrar confirmación
     if (scanHistory.length > 0) {
-      // Calcular productos únicos escaneados y nuevos desde el historial
       const uniqueScanned = new Set<string>()
       const uniqueNew = new Set<string>()
       
       scanHistory.forEach(item => {
         if (item.stockBefore === 0) {
-          // Producto nuevo (primera vez escaneado/agregado)
           uniqueNew.add(item.id)
         } else {
-          // Producto existente
           uniqueScanned.add(item.id)
         }
       })
@@ -305,29 +291,28 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       setScannedProductIds(uniqueScanned)
       setNewProductBarcodes(uniqueNew)
       setShowConfirmClose(true)
-      setIsManuallyLocked(true) // Bloquear escáner cuando aparece el modal
+      setIsManuallyLocked(true)
       return
     }
 
-    // Si no hay escaneos, cerrar directamente
     await closeScanner()
   }
 
   const closeScanner = async () => {
-    // Guardar si hubo escaneos ANTES de resetear
+    // ✅ Marcar que está cerrando definitivamente
+    isClosingRef.current = true
+
     const hadScans = scanCountRef.current > 0
 
-    // Resetear refs y contadores
     isProcessingRef.current = false
     lastScanTimeRef.current = 0
     scanCountRef.current = 0
     setScannedProductIds(new Set())
     setNewProductBarcodes(new Set())
 
-    // Limpiar localStorage al cerrar
+    // ✅ Limpiar localStorage SOLO al cerrar definitivamente
     localStorage.removeItem('scanner_history')
 
-    // Revalidar inventario si hubo escaneos
     if (hadScans) {
       try {
         const { revalidateInventory } = await import('@/app/actions/products')
@@ -337,14 +322,10 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       }
     }
 
-    // NO intentar detener la cámara manualmente
-    // El useEffect cleanup (línea 120-132) se encargará cuando se desmonte
-    // Simplemente cerrar el modal
     onClose()
   }
 
   const toggleLock = () => {
-    // No permitir cambiar el bloqueo si está procesando
     if (isProcessingRef.current || isPausedRef.current) {
       return
     }
@@ -372,7 +353,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           font-style: normal;
         }
       `}</style>
-      {/* Patrón de fondo decorativo */}
+
       <div className="absolute inset-0 opacity-10">
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 grid-rows-8 sm:grid-rows-10 md:grid-rows-12 h-full w-full">
           {[...Array(96)].map((_, i) => (
@@ -381,7 +362,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         </div>
       </div>
 
-      {/* Botón cerrar */}
       <button
         onClick={handleClose}
         className="absolute top-4 right-4 sm:top-6 sm:right-6 p-1.5 sm:p-2 transition-all"
@@ -390,13 +370,12 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         <X className="w-8 h-8 sm:w-10 sm:h-10 text-white" strokeWidth={2.5} />
       </button>
 
-      {/* Modal de confirmación */}
       {showConfirmClose && (
         <div 
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4"
           onClick={() => {
             setShowConfirmClose(false)
-            setIsManuallyLocked(false) // Desbloquear escáner al hacer clic fuera
+            setIsManuallyLocked(false)
           }}
         >
           <div 
@@ -430,7 +409,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
               <button
                 onClick={() => {
                   setShowConfirmClose(false)
-                  setIsManuallyLocked(false) // Desbloquear escáner al cancelar
+                  setIsManuallyLocked(false)
                 }}
                 className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
                 style={{ fontFamily: 'MomoTrust, sans-serif' }}
@@ -454,7 +433,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         </div>
       )}
 
-      {/* Área del escáner - Responsive */}
       <div className="absolute top-[20%] sm:top-[25%] md:top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 z-20">
         <div
           id="reader"
@@ -462,7 +440,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           className="w-full h-full rounded-3xl overflow-hidden"
         ></div>
 
-        {/* Overlay de bloqueo (imagen con fondo negro cuando está bloqueado) */}
         <button
           onClick={toggleLock}
           disabled={isProcessing || isPaused}
@@ -489,37 +466,27 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         </button>
       </div>
 
-      {/* Marco del escáner - Esquinas blancas redondeadas */}
       <div className="absolute top-[20%] sm:top-[25%] md:top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 z-30 pointer-events-none">
-        {/* Esquina superior izquierda */}
         <div className="absolute top-0 left-0 w-10 h-10 sm:w-12 sm:h-12 border-l-4 border-t-4 border-white rounded-tl-3xl"></div>
-        {/* Esquina superior derecha */}
         <div className="absolute top-0 right-0 w-10 h-10 sm:w-12 sm:h-12 border-r-4 border-t-4 border-white rounded-tr-3xl"></div>
-        {/* Esquina inferior izquierda */}
         <div className="absolute bottom-0 left-0 w-10 h-10 sm:w-12 sm:h-12 border-l-4 border-b-4 border-white rounded-bl-3xl"></div>
-        {/* Esquina inferior derecha */}
         <div className="absolute bottom-0 right-0 w-10 h-10 sm:w-12 sm:h-12 border-r-4 border-b-4 border-white rounded-br-3xl"></div>
 
-        {/* Bordes negros internos que cambian a verde al escanear */}
-        {/* Borde superior */}
         <div
           className={`absolute top-0 left-1/2 transform -translate-x-1/2 w-32 sm:w-40 h-1 transition-colors duration-300 ${
             scanSuccess ? 'bg-green-500' : 'bg-black'
           }`}
         ></div>
-        {/* Borde inferior */}
         <div
           className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 w-32 sm:w-40 h-1 transition-colors duration-300 ${
             scanSuccess ? 'bg-green-500' : 'bg-black'
           }`}
         ></div>
-        {/* Borde izquierdo */}
         <div
           className={`absolute left-0 top-1/2 transform -translate-y-1/2 h-32 sm:h-40 w-1 transition-colors duration-300 ${
             scanSuccess ? 'bg-green-500' : 'bg-black'
           }`}
         ></div>
-        {/* Borde derecho */}
         <div
           className={`absolute right-0 top-1/2 transform -translate-y-1/2 h-32 sm:h-40 w-1 transition-colors duration-300 ${
             scanSuccess ? 'bg-green-500' : 'bg-black'
@@ -527,10 +494,8 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         ></div>
       </div>
 
-      {/* Panel inferior blanco con Historial */}
       <div className="absolute bottom-0 left-0 right-0 h-[55vh] sm:h-96 md:h-96 bg-white rounded-t-3xl z-10 shadow-2xl">
         <div className="flex flex-col h-full px-4 sm:px-6 py-4">
-          {/* Historial */}
           <div className="flex-1 overflow-hidden flex flex-col">
             <div className="mb-3">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center justify-between">
