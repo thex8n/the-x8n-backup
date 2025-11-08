@@ -5,6 +5,9 @@ import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library'
 import { X, AlertCircle } from 'lucide-react'
 import { CiCircleCheck } from 'react-icons/ci'
 import { findProductByBarcode, incrementProductStock } from '@/app/actions/products'
+import { SCAN_COOLDOWN_MS, SCANNER_FPS, SCANNER_BOX_SIZE } from '@/constants/ui'
+import { SCANNER_MESSAGES, PRODUCT_MESSAGES } from '@/constants/validation'
+import type { ScannerErrorType } from '@/types'
 
 interface BarcodeScannerModalProps {
   onClose: () => void
@@ -12,11 +15,9 @@ interface BarcodeScannerModalProps {
   onStockUpdated?: () => void
 }
 
-type ErrorType = 'camera' | 'network' | 'processing' | 'permission' | null
-
 export default function BarcodeScannerModalZXing({ onClose, onProductNotFound, onStockUpdated }: BarcodeScannerModalProps) {
   const [error, setError] = useState<string | null>(null)
-  const [errorType, setErrorType] = useState<ErrorType>(null)
+  const [errorType, setErrorType] = useState<ScannerErrorType>(null)
   const [scannedCode, setScannedCode] = useState<string | null>(null)
   const [isScannerActive, setIsScannerActive] = useState(true)
   const [notification, setNotification] = useState<string | null>(null)
@@ -28,7 +29,6 @@ export default function BarcodeScannerModalZXing({ onClose, onProductNotFound, o
   const isProcessingRef = useRef<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
-  const SCAN_COOLDOWN_MS = 500
 
   useEffect(() => {
     if (isScannerActive) {
@@ -45,7 +45,7 @@ export default function BarcodeScannerModalZXing({ onClose, onProductNotFound, o
     }
   }, [isScannerActive])
 
-  const handleError = (message: string, type: ErrorType) => {
+  const handleError = (message: string, type: ScannerErrorType) => {
     setError(message)
     setErrorType(type)
     setIsProcessing(false)

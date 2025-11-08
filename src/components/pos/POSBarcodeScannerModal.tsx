@@ -5,6 +5,9 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { X, ShoppingCart, Check, Trash2 } from 'lucide-react'
 import { findProductByBarcode, decrementProductStock } from '@/app/actions/products'
 import { CartItem } from '@/types/cart'
+import { SCAN_COOLDOWN_MS } from '@/constants/ui'
+import { SCANNER_MESSAGES, POS_MESSAGES, PRODUCT_MESSAGES } from '@/constants/validation'
+import { formatCurrency } from '@/lib/utils/format'
 
 interface POSBarcodeScannerModalProps {
   onClose: () => void
@@ -25,7 +28,6 @@ export default function POSBarcodeScannerModal({ onClose, cart, onUpdateCart }: 
   const isProcessingRef = useRef<boolean>(false)
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
   const scannerIdRef = useRef('pos-barcode-scanner')
-  const SCAN_COOLDOWN_MS = 500
 
   const cartTotal = cart.reduce((total, item) => {
     return total + (item.product.sale_price || 0) * item.quantity

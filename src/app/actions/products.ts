@@ -1,17 +1,24 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/supabase/auth'
 import { ProductFormData } from '@/types/product'
 import { revalidatePath } from 'next/cache'
+import { AUTH_MESSAGES, PRODUCT_MESSAGES } from '@/constants/validation'
 
+/**
+ * Adds a new product to the inventory
+ * @param data - Product form data
+ * @returns Success with product data or error message
+ */
 export async function addProduct(data: ProductFormData) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: product, error } = await supabase
     .from('products')
@@ -34,7 +41,7 @@ export async function addProduct(data: ProductFormData) {
   if (error) {
     console.error('Error adding product:', error)
     if (error.code === '23505') {
-      return { error: 'Ya tienes un producto con este código. Por favor usa otro código.' }
+      return { error: PRODUCT_MESSAGES.CODE_DUPLICATE }
     }
     return { error: error.message }
   }
@@ -43,14 +50,18 @@ export async function addProduct(data: ProductFormData) {
   return { success: true, data: product }
 }
 
+/**
+ * Retrieves all products for the authenticated user
+ * @returns Success with products array or error message
+ */
 export async function getProducts() {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: products, error } = await supabase
     .from('products')
@@ -68,14 +79,20 @@ export async function getProducts() {
   return { success: true, data: products }
 }
 
+/**
+ * Updates an existing product
+ * @param productId - ID of the product to update
+ * @param data - Updated product form data
+ * @returns Success with updated product data or error message
+ */
 export async function updateProduct(productId: string, data: ProductFormData) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: product, error } = await supabase
     .from('products')
@@ -98,7 +115,7 @@ export async function updateProduct(productId: string, data: ProductFormData) {
   if (error) {
     console.error('Error updating product:', error)
     if (error.code === '23505') {
-      return { error: 'Ya tienes un producto con este código. Por favor usa otro código.' }
+      return { error: PRODUCT_MESSAGES.CODE_DUPLICATE }
     }
     return { error: error.message }
   }
@@ -107,14 +124,19 @@ export async function updateProduct(productId: string, data: ProductFormData) {
   return { success: true, data: product }
 }
 
+/**
+ * Deletes a product from the inventory
+ * @param productId - ID of the product to delete
+ * @returns Success or error message
+ */
 export async function deleteProduct(productId: string) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('products')
@@ -130,18 +152,23 @@ export async function deleteProduct(productId: string) {
   return { success: true }
 }
 
+/**
+ * Searches products by name or code
+ * @param query - Search query string
+ * @returns Success with matching products or error message
+ */
 export async function searchProducts(query: string) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
 
   if (!query.trim()) {
     return getProducts()
   }
+
+  const supabase = await createClient()
 
   const { data: products, error } = await supabase
     .from('products')
@@ -157,14 +184,19 @@ export async function searchProducts(query: string) {
   return { success: true, data: products }
 }
 
+/**
+ * Finds a product by its unique code
+ * @param code - Product code to search for
+ * @returns Success with product data (or null if not found) or error message
+ */
 export async function findProductByCode(code: string) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: product, error } = await supabase
     .from('products')
@@ -187,15 +219,20 @@ export async function findProductByCode(code: string) {
   return { success: true, data: product }
 }
 
-// ✅ NUEVA FUNCIÓN: Buscar producto por barcode
+/**
+ * Finds a product by its barcode
+ * Uses maybeSingle() to return null if not found instead of throwing error
+ * @param barcode - Barcode to search for
+ * @returns Success with product data (or null if not found) or error message
+ */
 export async function findProductByBarcode(barcode: string) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: product, error } = await supabase
     .from('products')
@@ -215,14 +252,19 @@ export async function findProductByBarcode(barcode: string) {
   return { success: true, data: product }
 }
 
+/**
+ * Increments a product's stock quantity by 1
+ * @param productId - ID of the product to increment
+ * @returns Success with updated product data or error message
+ */
 export async function incrementProductStock(productId: string) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: product, error: fetchError } = await supabase
     .from('products')
@@ -257,14 +299,21 @@ export async function incrementProductStock(productId: string) {
   return { success: true, data: updatedProduct }
 }
 
+/**
+ * Decrements a product's stock quantity
+ * Validates that sufficient stock is available before decrementing
+ * @param productId - ID of the product to decrement
+ * @param quantity - Amount to decrement (default: 1)
+ * @returns Success with updated product data or error message
+ */
 export async function decrementProductStock(productId: string, quantity: number = 1) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: product, error: fetchError } = await supabase
     .from('products')
@@ -280,7 +329,8 @@ export async function decrementProductStock(productId: string, quantity: number 
 
   // Validar que haya stock suficiente
   if (product.stock_quantity < quantity) {
-    return { error: `Stock insuficiente. Disponible: ${product.stock_quantity}, Solicitado: ${quantity}` }
+    const { getInsufficientStockMessage } = await import('@/constants/validation')
+    return { error: getInsufficientStockMessage(product.stock_quantity, quantity) }
   }
 
   const newStock = product.stock_quantity - quantity

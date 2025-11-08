@@ -4,8 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { AUTH_MESSAGES } from '@/constants/validation'
 
-// Helper para obtener la URL de origen desde los headers
+/**
+ * Helper to get the origin URL from request headers
+ * Handles special case for 0.0.0.0 host by using environment variable
+ */
 async function getOriginUrl() {
   const headersList = await headers()
   const host = headersList.get('host')
@@ -19,6 +23,10 @@ async function getOriginUrl() {
   return `${protocol}://${host}`
 }
 
+/**
+ * Initiates Google OAuth sign-in flow
+ * Redirects to Google for authentication
+ */
 export async function signInWithGoogle() {
   const supabase = await createClient()
   const origin = await getOriginUrl()
@@ -37,6 +45,12 @@ export async function signInWithGoogle() {
   redirect(data.url)
 }
 
+/**
+ * Signs in a user with email and password
+ * @param email - User's email address
+ * @param password - User's password
+ * @returns Error message if authentication fails
+ */
 export async function signInWithEmail(email: string, password: string) {
   const supabase = await createClient()
 
@@ -46,13 +60,20 @@ export async function signInWithEmail(email: string, password: string) {
   })
 
   if (error) {
-    return { error: 'Email o contraseña incorrectos' }
+    return { error: AUTH_MESSAGES.INVALID_CREDENTIALS }
   }
 
   revalidatePath('/', 'layout')
   redirect('/dashboard')
 }
 
+/**
+ * Creates a new user account with email and password
+ * @param email - User's email address
+ * @param password - User's password
+ * @param fullName - User's full name
+ * @returns Error message if signup fails
+ */
 export async function signUpWithEmail(email: string, password: string, fullName: string) {
   const supabase = await createClient()
 
@@ -74,6 +95,10 @@ export async function signUpWithEmail(email: string, password: string, fullName:
   redirect('/dashboard')
 }
 
+/**
+ * Signs out the current user
+ * Clears session and redirects to login page
+ */
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
@@ -81,6 +106,10 @@ export async function signOut() {
   redirect('/login')
 }
 
+/**
+ * Gets the currently authenticated user
+ * @returns User object or null if not authenticated
+ */
 export async function getUser() {
   const supabase = await createClient()
   const {

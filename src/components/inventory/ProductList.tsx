@@ -5,6 +5,7 @@ import { ProductWithCategory } from '@/types/product'
 import { deleteProduct } from '@/app/actions/products'
 import { useSidebar } from '@/contexts/SidebarContext'
 import CategoryBadge from './CategoryBadge'
+import { formatCurrency } from '@/lib/utils/format'
 
 interface ProductListProps {
   products: ProductWithCategory[]
@@ -94,16 +95,6 @@ export default function ProductList({ products, onProductDeleted, onProductEdit 
     )
   }
 
-  const formatPrice = (price: number | null) => {
-    if (price === null) return '-'
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price)
-  }
-
   return (
     <>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -179,10 +170,10 @@ export default function ProductList({ products, onProductDeleted, onProductEdit 
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPrice(product.sale_price)}
+                      {formatCurrency(product.sale_price)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPrice(product.cost_price)}
+                      {formatCurrency(product.cost_price)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

@@ -7,6 +7,8 @@ import { ProductFormData } from '@/types/product'
 import { Category } from '@/types/category'
 import CategorySelector from './CategorySelector'
 import AddCategoryForm from './AddCategoryForm'
+import { generateNextProductCode } from '@/lib/utils/product'
+import { PRODUCT_MESSAGES } from '@/constants/validation'
 
 interface AddProductFormProps {
   onClose: () => void
@@ -60,27 +62,15 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
     }
   }
 
-  const generateNextProductCode = async (): Promise<string> => {
+  /**
+   * Generates the next product code by fetching all products
+   * and using the utility function to calculate the next code
+   */
+  const generateNextCode = async (): Promise<string> => {
     const result = await getProducts()
     if ('data' in result && result.data) {
-      const products = result.data
-      
-      // Filtrar productos que tienen códigos con formato PROD-XXX
-      const prodCodes = products
-        .map((p: any) => p.code)
-        .filter((code: string) => code.startsWith('PROD-'))
-        .map((code: string) => {
-          const num = parseInt(code.replace('PROD-', ''))
-          return isNaN(num) ? 0 : num
-        })
-      
-      // Encontrar el número más alto y sumar 1
-      const maxNum = prodCodes.length > 0 ? Math.max(...prodCodes) : 0
-      const nextNum = maxNum + 1
-      
-      return `PROD-${String(nextNum).padStart(3, '0')}`
+      return generateNextProductCode(result.data)
     }
-    
     return 'PROD-001'
   }
 
@@ -97,12 +87,12 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
     // Si no hay código único, generar uno automáticamente
     let finalCode = formData.code
     if (!finalCode && formData.barcode) {
-      finalCode = await generateNextProductCode()
+      finalCode = await generateNextCode()
     }
 
     // Validar que al menos uno de los dos códigos esté presente
     if (!finalCode && !formData.barcode) {
-      setError('Debes ingresar al menos un Código Único o un Código de Barra')
+      setError(PRODUCT_MESSAGES.CODE_OR_BARCODE_REQUIRED)
       setLoading(false)
       return
     }

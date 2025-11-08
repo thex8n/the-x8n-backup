@@ -1,17 +1,24 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/supabase/auth'
 import { CategoryFormData } from '@/types/category'
 import { revalidatePath } from 'next/cache'
+import { AUTH_MESSAGES, getCategoryDeleteWithProductsMessage } from '@/constants/validation'
 
+/**
+ * Adds a new category to the system
+ * @param data - Category form data
+ * @returns Success with category data or error message
+ */
 export async function addCategory(data: CategoryFormData) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: category, error } = await supabase
     .from('categories')
@@ -36,14 +43,18 @@ export async function addCategory(data: CategoryFormData) {
   return { success: true, data: category }
 }
 
+/**
+ * Retrieves all categories for the authenticated user
+ * @returns Success with categories array or error message
+ */
 export async function getCategories() {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: categories, error } = await supabase
     .from('categories')
@@ -59,14 +70,20 @@ export async function getCategories() {
   return { success: true, data: categories }
 }
 
+/**
+ * Updates an existing category
+ * @param categoryId - ID of the category to update
+ * @param data - Updated category form data
+ * @returns Success with updated category data or error message
+ */
 export async function updateCategory(categoryId: string, data: CategoryFormData) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
+
+  const supabase = await createClient()
 
   const { data: category, error } = await supabase
     .from('categories')
@@ -91,15 +108,22 @@ export async function updateCategory(categoryId: string, data: CategoryFormData)
   return { success: true, data: category }
 }
 
+/**
+ * Deletes a category from the system
+ * Validates that no products are assigned to the category before deletion
+ * @param categoryId - ID of the category to delete
+ * @returns Success or error message
+ */
 export async function deleteCategory(categoryId: string) {
-  const supabase = await createClient()
+  const user = await requireAuth()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: 'No autenticado' }
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
   }
 
+  const supabase = await createClient()
+
+  // Check if category has products assigned
   const { count, error: countError } = await supabase
     .from('products')
     .select('*', { count: 'exact', head: true })
@@ -111,7 +135,7 @@ export async function deleteCategory(categoryId: string) {
   }
 
   if (count && count > 0) {
-    return { error: `No se puede eliminar la categoría porque tiene ${count} producto(s) asignado(s)` }
+    return { error: getCategoryDeleteWithProductsMessage(count) }
   }
 
   const { error } = await supabase
