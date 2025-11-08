@@ -238,9 +238,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           text: '⚠ Producto no encontrado. Abriendo formulario...'
         })
 
-        // Agregar barcode único de producto nuevo
-        setNewProductBarcodes(prev => new Set(prev).add(cleanBarcode))
-
         setTimeout(() => {
           if (onProductNotFound) {
             onProductNotFound(cleanBarcode)
@@ -261,6 +258,22 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   const handleClose = async () => {
     // Si hay escaneos en el historial, mostrar confirmación
     if (scanHistory.length > 0) {
+      // Calcular productos únicos escaneados y nuevos desde el historial
+      const uniqueScanned = new Set<string>()
+      const uniqueNew = new Set<string>()
+      
+      scanHistory.forEach(item => {
+        if (item.stockBefore === 0 && item.stockAfter === 1) {
+          // Producto nuevo (primera vez escaneado)
+          uniqueNew.add(item.id)
+        } else {
+          // Producto existente
+          uniqueScanned.add(item.id)
+        }
+      })
+      
+      setScannedProductIds(uniqueScanned)
+      setNewProductBarcodes(uniqueNew)
       setShowConfirmClose(true)
       setIsManuallyLocked(true) // Bloquear escáner cuando aparece el modal
       return
