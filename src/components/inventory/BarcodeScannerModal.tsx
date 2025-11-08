@@ -30,6 +30,8 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   const [showConfirmClose, setShowConfirmClose] = useState(false)
   const [isManuallyLocked, setIsManuallyLocked] = useState(true) // Iniciar bloqueado por seguridad
   const [scanSuccess, setScanSuccess] = useState(false) // Para animación de bordes verdes
+  const [scannedProductIds, setScannedProductIds] = useState<Set<string>>(new Set()) // IDs únicos de productos escaneados
+  const [newProductBarcodes, setNewProductBarcodes] = useState<Set<string>>(new Set()) // Barcodes únicos de productos nuevos
   const html5QrCodeRef = useRef<any>(null)
   const isProcessingRef = useRef<boolean>(false)
   const lastScanTimeRef = useRef<number>(0)
@@ -227,11 +229,17 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         if (onStockUpdated) {
           onStockUpdated()
         }
+
+        // Agregar ID único de producto escaneado
+        setScannedProductIds(prev => new Set(prev).add(findResult.data.id))
       } else {
         setMessage({
           type: 'info',
           text: '⚠ Producto no encontrado. Abriendo formulario...'
         })
+
+        // Agregar barcode único de producto nuevo
+        setNewProductBarcodes(prev => new Set(prev).add(cleanBarcode))
 
         setTimeout(() => {
           if (onProductNotFound) {
@@ -254,6 +262,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     // Si hay escaneos en el historial, mostrar confirmación
     if (scanHistory.length > 0) {
       setShowConfirmClose(true)
+      setIsManuallyLocked(true) // Bloquear escáner cuando aparece el modal
       return
     }
 
@@ -265,10 +274,12 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     // Guardar si hubo escaneos ANTES de resetear
     const hadScans = scanCountRef.current > 0
 
-    // Resetear refs
+    // Resetear refs y contadores
     isProcessingRef.current = false
     lastScanTimeRef.current = 0
     scanCountRef.current = 0
+    setScannedProductIds(new Set())
+    setNewProductBarcodes(new Set())
 
     // Limpiar localStorage al cerrar
     localStorage.removeItem('scanner_history')
@@ -330,25 +341,58 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
 
       {/* Modal de confirmación */}
       {showConfirmClose && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4"
+          onClick={() => {
+            setShowConfirmClose(false)
+            setIsManuallyLocked(false) // Desbloquear escáner al hacer clic fuera
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-xl font-bold text-gray-900 mb-3">¿Cerrar escáner?</h3>
             <p className="text-gray-600 mb-6">
-              Has escaneado {scanHistory.length} {scanHistory.length === 1 ? 'producto' : 'productos'}. 
-              Todos los cambios ya están guardados.
+              {scannedProductIds.size > 0 && newProductBarcodes.size > 0 && (
+                <>
+                  Se ha{scannedProductIds.size === 1 ? '' : 'n'} aumentado el stock de {scannedProductIds.size} {scannedProductIds.size === 1 ? 'producto' : 'productos'} y se registr{newProductBarcodes.size === 1 ? 'ó' : 'aron'} {newProductBarcodes.size} {newProductBarcodes.size === 1 ? 'nuevo producto' : 'nuevos productos'}. Todos los cambios se han guardado correctamente.
+                </>
+              )}
+              {scannedProductIds.size > 0 && newProductBarcodes.size === 0 && (
+                <>
+                  Se ha aumentado el stock de {scannedProductIds.size} {scannedProductIds.size === 1 ? 'producto' : 'productos'}. Todos los cambios se han guardado correctamente.
+                </>
+              )}
+              {scannedProductIds.size === 0 && newProductBarcodes.size > 0 && (
+                <>
+                  Se ha{newProductBarcodes.size === 1 ? '' : 'n'} registrado {newProductBarcodes.size} {newProductBarcodes.size === 1 ? 'nuevo producto' : 'nuevos productos'}. Todos los cambios se han guardado correctamente.
+                </>
+              )}
+              {scannedProductIds.size === 0 && newProductBarcodes.size === 0 && (
+                <>
+                  No se realizaron cambios.
+                </>
+              )}
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => setShowConfirmClose(false)}
+                onClick={() => {
+                  setShowConfirmClose(false)
+                  setIsManuallyLocked(false) // Desbloquear escáner al cancelar
+                }}
                 className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
               >
-                Continuar escaneando
+                Cancelar
               </button>
               <button
                 onClick={closeScanner}
-                className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+                className="flex-1 px-4 py-2.5 text-black font-semibold rounded-lg transition-colors"
+                style={{ backgroundColor: '#88E788' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#70d970'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#88E788'}
               >
-                Cerrar
+                Aceptar
               </button>
             </div>
           </div>
