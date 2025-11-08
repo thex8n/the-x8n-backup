@@ -26,7 +26,7 @@ export async function addProduct(data: ProductFormData) {
       user_id: user.id,
       name: data.name,
       code: data.code,
-      barcode: data.barcode || null,  // ✅ NUEVO: Guardar barcode
+      barcode: data.barcode || null,
       category_id: data.category_id || null,
       stock_quantity: data.stock_quantity,
       minimum_stock: data.minimum_stock,
@@ -99,7 +99,7 @@ export async function updateProduct(productId: string, data: ProductFormData) {
     .update({
       name: data.name,
       code: data.code,
-      barcode: data.barcode || null,  // ✅ NUEVO: Actualizar barcode
+      barcode: data.barcode || null,
       category_id: data.category_id || null,
       stock_quantity: data.stock_quantity,
       minimum_stock: data.minimum_stock,
@@ -220,8 +220,56 @@ export async function findProductByCode(code: string) {
 }
 
 /**
- * Finds a product by its barcode
- * Uses maybeSingle() to return null if not found instead of throwing error
+ * Scans barcode and increments stock in ONE QUERY - ULTRA RÁPIDO 🚀
+ * @param barcode - Barcode to search for and update
+ * @returns Success with updated product data or null if not found
+ */
+export async function scanAndIncrementStock(barcode: string) {
+  const user = await requireAuth()
+
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
+  }
+
+  const supabase = await createClient()
+
+  // 🚀 UNA SOLA QUERY: Busca Y actualiza al mismo tiempo
+  const { data: products, error } = await supabase
+    .rpc('scan_and_increment_stock', { 
+      barcode_param: barcode,
+      user_id_param: user.id 
+    })
+
+  if (error) {
+    console.error('Error scanning and updating:', error)
+    return { error: error.message }
+  }
+
+  if (!products || products.length === 0) {
+    return { success: true, data: null }
+  }
+
+  const product = products[0]
+  
+  // Transformar el formato de categoría
+  if (product.category_name) {
+    product.category = {
+      id: product.category_id,
+      name: product.category_name,
+      color: product.category_color,
+      icon: product.category_icon
+    }
+    delete product.category_name
+    delete product.category_color
+    delete product.category_icon
+  }
+
+  revalidatePath('/inventory')
+  return { success: true, data: product }
+}
+
+/**
+ * Finds a product by its barcode - OPTIMIZADO ⚡
  * @param barcode - Barcode to search for
  * @returns Success with product data (or null if not found) or error message
  */
@@ -234,6 +282,7 @@ export async function findProductByBarcode(barcode: string) {
 
   const supabase = await createClient()
 
+  // ✅ Query optimizada con índice
   const { data: product, error } = await supabase
     .from('products')
     .select(`
@@ -242,7 +291,7 @@ export async function findProductByBarcode(barcode: string) {
     `)
     .eq('barcode', barcode)
     .eq('user_id', user.id)
-    .maybeSingle()  // ✅ Usa maybeSingle en lugar de single para no lanzar error si no existe
+    .maybeSingle()
 
   if (error) {
     console.error('Error finding product by barcode:', error)
@@ -253,7 +302,7 @@ export async function findProductByBarcode(barcode: string) {
 }
 
 /**
- * Increments a product's stock quantity by 1
+ * Increments a product's stock quantity by 1 - OPTIMIZADO ⚡
  * @param productId - ID of the product to increment
  * @returns Success with updated product data or error message
  */
@@ -266,37 +315,39 @@ export async function incrementProductStock(productId: string) {
 
   const supabase = await createClient()
 
-  const { data: product, error: fetchError } = await supabase
-    .from('products')
-    .select('stock_quantity')
-    .eq('id', productId)
-    .eq('user_id', user.id)
-    .single()
+  // ✅ UNA SOLA QUERY: Usar función SQL para actualizar
+  const { data: products, error } = await supabase
+    .rpc('increment_product_stock', { 
+      product_id: productId,
+      user_id_param: user.id 
+    })
 
-  if (fetchError) {
-    console.error('Error fetching product:', fetchError)
-    return { error: fetchError.message }
+  if (error) {
+    console.error('Error updating stock:', error)
+    return { error: error.message }
   }
 
-  const newStock = product.stock_quantity + 1
+  if (!products || products.length === 0) {
+    return { error: 'Producto no encontrado' }
+  }
 
-  const { data: updatedProduct, error: updateError } = await supabase
-    .from('products')
-    .update({ stock_quantity: newStock })
-    .eq('id', productId)
-    .select(`
-      *,
-      category:categories(id, name, color, icon)
-    `)
-    .single()
+  const product = products[0]
 
-  if (updateError) {
-    console.error('Error updating stock:', updateError)
-    return { error: updateError.message }
+  // Obtener categoría si existe
+  if (product.category_id) {
+    const { data: category } = await supabase
+      .from('categories')
+      .select('id, name, color, icon')
+      .eq('id', product.category_id)
+      .single()
+
+    if (category) {
+      product.category = category
+    }
   }
 
   revalidatePath('/inventory')
-  return { success: true, data: updatedProduct }
+  return { success: true, data: product }
 }
 
 /**

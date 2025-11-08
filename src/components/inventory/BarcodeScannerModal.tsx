@@ -1,6 +1,6 @@
 'use client'
 
-import { X, ScanBarcode, Check } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 interface BarcodeScannerModalProps {
@@ -12,13 +12,11 @@ interface BarcodeScannerModalProps {
 export default function BarcodeScannerModal({ onClose, onProductNotFound, onStockUpdated }: BarcodeScannerModalProps) {
   const scannerRef = useRef<HTMLDivElement>(null)
   const [scannedCode, setScannedCode] = useState<string>('')
-  const [isScanning, setIsScanning] = useState(false)
   const [isCameraReady, setIsCameraReady] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   const html5QrCodeRef = useRef<any>(null)
-  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const isScanningRef = useRef<boolean>(false)
+  const isProcessingRef = useRef<boolean>(false)
 
   useEffect(() => {
     let isMounted = true
@@ -60,18 +58,11 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         }
 
         const qrCodeSuccessCallback = async (decodedText: string) => {
-          // Usar ref en lugar de state para tener el valor actualizado
-          if (!isScanningRef.current) return
+          // Evitar procesar si ya está procesando otro código
+          if (isProcessingRef.current) return
           
-          // Cancelar el timeout de 2 segundos ya que se escaneó un código
-          if (scanTimeoutRef.current) {
-            clearTimeout(scanTimeoutRef.current)
-            scanTimeoutRef.current = null
-          }
-          
+          isProcessingRef.current = true
           setScannedCode(decodedText)
-          setIsScanning(false)
-          isScanningRef.current = false
           
           // Vibración si está disponible
           if (navigator.vibrate) {
@@ -82,6 +73,13 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           
           // Procesar el código escaneado
           await handleBarcodeScanned(decodedText)
+          
+          // Esperar 1 segundo antes de permitir otro escaneo
+          setTimeout(() => {
+            isProcessingRef.current = false
+            setScannedCode('')
+            setMessage(null)
+          }, 1000)
         }
 
         await html5QrCode.start(
@@ -101,9 +99,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
 
     return () => {
       isMounted = false
-      if (scanTimeoutRef.current) {
-        clearTimeout(scanTimeoutRef.current)
-      }
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current.stop().catch((err: any) => {
           console.error('Error deteniendo escáner:', err)
@@ -152,12 +147,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         if (onStockUpdated) {
           onStockUpdated()
         }
-
-        // Limpiar después de 3 segundos
-        setTimeout(() => {
-          setScannedCode('')
-          setMessage(null)
-        }, 3000)
       } else {
         // Producto no encontrado - Abrir formulario
         setMessage({
@@ -169,7 +158,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           if (onProductNotFound) {
             onProductNotFound(barcode)
           }
-        }, 1500)
+        }, 800)
       }
     } catch (error) {
       console.error('Error procesando código:', error)
@@ -177,20 +166,12 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         type: 'error',
         text: '✗ Error al procesar el código. Intenta nuevamente.'
       })
-
-      setTimeout(() => {
-        setScannedCode('')
-        setMessage(null)
-      }, 3000)
     } finally {
       setIsProcessing(false)
     }
   }
 
   const handleClose = () => {
-    if (scanTimeoutRef.current) {
-      clearTimeout(scanTimeoutRef.current)
-    }
     if (html5QrCodeRef.current) {
       html5QrCodeRef.current.stop().then(() => {
         onClose()
@@ -201,20 +182,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     } else {
       onClose()
     }
-  }
-
-  const handleScan = () => {
-    setIsScanning(true)
-    isScanningRef.current = true
-    setScannedCode('')
-    setMessage(null)
-    
-    // Timeout de 2 segundos: si no se escanea nada, apagar el escaneo
-    scanTimeoutRef.current = setTimeout(() => {
-      setIsScanning(false)
-      isScanningRef.current = false
-      scanTimeoutRef.current = null
-    }, 2000) // 2 segundos
   }
 
   return (
@@ -259,13 +226,6 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
         <div className="absolute bottom-0 left-0 w-12 h-12 border-l-4 border-b-4 border-yellow-400 rounded-bl-2xl"></div>
         <div className="absolute bottom-0 right-0 w-12 h-12 border-r-4 border-b-4 border-yellow-400 rounded-br-2xl"></div>
       </div>
-
-      {/* Indicador de escaneo activo */}
-      {isScanning && (
-        <div className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 z-25 pointer-events-none">
-          <div className="absolute inset-0 border-4 border-green-400 rounded-2xl animate-pulse"></div>
-        </div>
-      )}
 
       {/* Panel inferior blanco */}
       <div className="absolute bottom-0 left-0 right-0 h-96 bg-white rounded-t-3xl z-10 shadow-2xl">
@@ -317,38 +277,18 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
               ) : (
                 <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 w-full max-w-sm mb-6">
                   <p className="text-gray-400 text-center text-sm">
-                    {isScanning ? 'Escaneando...' : 'Presiona el botón para escanear'}
+                    Apunta al código de barras
                   </p>
                 </div>
               )}
 
               <p className="text-gray-400 text-xs mt-6">
-                {scannedCode ? 'Toca el botón para escanear otro código' : 'FPS: 30 | Alta Precisión | Todos los formatos'}
+                {scannedCode ? 'Escaneando automáticamente...' : 'Escaneo automático activado | FPS: 30'}
               </p>
             </>
           )}
         </div>
       </div>
-
-      {/* Botón de escaneo flotante - Misma posición que en page.tsx */}
-      {isCameraReady && (
-        <button
-          onClick={handleScan}
-          disabled={isScanning || isProcessing}
-          className={`fixed w-16 h-16 rounded-2xl shadow-2xl transition-all flex items-center justify-center z-40 active:scale-95 ${
-            isScanning || isProcessing
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-black text-white hover:bg-gray-900'
-          }`}
-          style={{ 
-            bottom: '6rem',
-            right: '1.5rem'
-          }}
-          aria-label={scannedCode ? 'Escanear nuevo código' : 'Escanear código'}
-        >
-          <ScanBarcode className="w-8 h-8 text-white" strokeWidth={2.5} />
-        </button>
-      )}
     </div>
   )
 }
