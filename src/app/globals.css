@@ -20,7 +20,7 @@ body {
 
 html, body {
   overscroll-behavior: none;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .overscroll-contain {
@@ -189,4 +189,19 @@ html, body {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Animación para spinner infinito */
+@keyframes infinityFlow {
+  0%, 100% {
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dashoffset: 400;
+  }
+}
+
+.infinity-spinner {
+  stroke-dasharray: 400;
+  animation: infinityFlow 2s ease-in-out infinite;
 }

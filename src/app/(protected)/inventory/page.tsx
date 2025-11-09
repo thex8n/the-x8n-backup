@@ -197,7 +197,7 @@ export default function InventoryPage() {
         searchQuery={searchQuery}
       />
 
-      <div className="p-8 pb-32">
+      <div className="p-8 pb-32 pt-20 md:pt-8 md:pb-8">
         <div className="hidden md:block mb-6 -mt-4">
           <div className="flex items-center justify-between mb-6 relative">
             <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
@@ -271,21 +271,32 @@ export default function InventoryPage() {
           </button>
         </div>
 
-        <div className="hidden md:block">
-          <ProductList
-            products={filteredProducts}
-            onProductDeleted={loadProducts}
-            onProductEdit={setEditingProduct}
-          />
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[calc(100vh-20rem)] md:min-h-[400px]">
+            <div className="relative w-24 h-24">
+              <div className="absolute inset-0 rounded-full bg-linear-to-r from-blue-500 via-blue-400 to-transparent animate-spin"></div>
+              <div className="absolute inset-3 rounded-full bg-gray-50"></div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="hidden md:block">
+              <ProductList
+                products={filteredProducts}
+                onProductDeleted={loadProducts}
+                onProductEdit={setEditingProduct}
+              />
+            </div>
 
-        <div className="md:hidden">
-          <MobileProductList
-            products={filteredProducts}
-            onProductDeleted={loadProducts}
-            onProductEdit={setEditingProduct}
-          />
-        </div>
+            <div className="md:hidden">
+              <MobileProductList
+                products={filteredProducts}
+                onProductDeleted={loadProducts}
+                onProductEdit={setEditingProduct}
+              />
+            </div>
+          </>
+        )}
 
         <button
           onClick={() => setShowBarcodeScanner(true)}
