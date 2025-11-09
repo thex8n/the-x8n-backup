@@ -7,6 +7,7 @@ import { ProductFormData } from '@/types/product'
 import { Category } from '@/types/category'
 import CategorySelector from './CategorySelector'
 import AddCategoryForm from './AddCategoryForm'
+import ImageUpload from '@/components/ui/ImageUpload'
 import { generateNextProductCode } from '@/lib/utils/product'
 import { PRODUCT_MESSAGES } from '@/constants/validation'
 
@@ -22,6 +23,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [showCategoryForm, setShowCategoryForm] = useState(false)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -33,6 +35,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
     sale_price: undefined,
     cost_price: undefined,
     unit_of_measure: '',
+    image_url: null,
     active: true,
   })
 
@@ -99,7 +102,8 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
 
     const result = await addProduct({
       ...formData,
-      code: finalCode
+      code: finalCode,
+      image_url: imageUrl
     })
 
     if (result.error) {
@@ -310,7 +314,15 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
                 />
               </div>
 
-              {/* 8. Producto Activo */}
+              {/* 8. Imagen del Producto */}
+              <div>
+                <ImageUpload
+                  currentImageUrl={imageUrl}
+                  onImageChange={setImageUrl}
+                />
+              </div>
+
+              {/* 9. Producto Activo */}
               <div className="flex items-center pt-2">
                 <input
                   type="checkbox"
@@ -484,6 +496,13 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
                 <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-700">
                   Producto Activo
                 </label>
+              </div>
+
+              <div className="md:col-span-2">
+                <ImageUpload
+                  currentImageUrl={imageUrl}
+                  onImageChange={setImageUrl}
+                />
               </div>
             </div>
 

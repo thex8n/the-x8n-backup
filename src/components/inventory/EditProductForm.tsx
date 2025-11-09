@@ -7,6 +7,7 @@ import { Product, ProductFormData } from '@/types/product'
 import { Category } from '@/types/category'
 import CategorySelector from './CategorySelector'
 import AddCategoryForm from './AddCategoryForm'
+import ImageUpload from '@/components/ui/ImageUpload'
 
 interface EditProductFormProps {
   product: Product
@@ -19,6 +20,7 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [showCategoryForm, setShowCategoryForm] = useState(false)
+  const [imageUrl, setImageUrl] = useState<string | null>(product.image_url)
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: product.name,
@@ -29,6 +31,7 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
     sale_price: product.sale_price || undefined,
     cost_price: product.cost_price || undefined,
     unit_of_measure: product.unit_of_measure || '',
+    image_url: product.image_url,
     active: product.active,
   })
 
@@ -53,7 +56,10 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
     setLoading(true)
     setError(null)
 
-    const result = await updateProduct(product.id, formData)
+    const result = await updateProduct(product.id, {
+      ...formData,
+      image_url: imageUrl
+    })
 
     if (result.error) {
       setError(result.error)
@@ -244,6 +250,13 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
                 <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-700">
                   Producto Activo
                 </label>
+              </div>
+
+              <div className="md:col-span-2">
+                <ImageUpload
+                  currentImageUrl={imageUrl}
+                  onImageChange={setImageUrl}
+                />
               </div>
             </div>
 

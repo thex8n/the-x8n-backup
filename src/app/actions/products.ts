@@ -33,6 +33,7 @@ export async function addProduct(data: ProductFormData) {
       sale_price: data.sale_price || null,
       cost_price: data.cost_price || null,
       unit_of_measure: data.unit_of_measure || null,
+      image_url: data.image_url || null,
       active: data.active,
     })
     .select()
@@ -106,6 +107,7 @@ export async function updateProduct(productId: string, data: ProductFormData) {
       sale_price: data.sale_price || null,
       cost_price: data.cost_price || null,
       unit_of_measure: data.unit_of_measure || null,
+      image_url: data.image_url || null,
       active: data.active,
     })
     .eq('id', productId)
