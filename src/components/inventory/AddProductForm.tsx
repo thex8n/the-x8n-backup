@@ -25,8 +25,6 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
   const [categories, setCategories] = useState<Category[]>([])
   const [showCategoryForm, setShowCategoryForm] = useState(false)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
-  
-  // 🆕 Guardar la imagen antigua que debe eliminarse al confirmar
   const [oldImageToDelete, setOldImageToDelete] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
@@ -49,16 +47,10 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
 
   useEffect(() => {
     if (initialCode) {
-      setFormData(prev => ({
-        ...prev,
-        code: initialCode
-      }))
+      setFormData(prev => ({ ...prev, code: initialCode }))
     }
     if (initialBarcode) {
-      setFormData(prev => ({
-        ...prev,
-        barcode: initialBarcode
-      }))
+      setFormData(prev => ({ ...prev, barcode: initialBarcode }))
     }
   }, [initialCode, initialBarcode])
 
@@ -82,31 +74,34 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
     setShowCategoryForm(false)
   }
 
-  // 🆕 Callback cuando se sube una nueva imagen
   const handleOldImageDelete = (oldUrl: string) => {
-    console.log('📝 Marcando imagen para eliminar al confirmar:', oldUrl)
+    console.log('📌 Marcando imagen para eliminar al confirmar:', oldUrl)
     setOldImageToDelete(oldUrl)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validaciones manuales
+    if (!formData.name.trim()) {
+      setError('El nombre del producto es requerido')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
-    // Si no hay código único, generar uno automáticamente
     let finalCode = formData.code
     if (!finalCode && formData.barcode) {
       finalCode = await generateNextCode()
     }
 
-    // Validar que al menos uno de los dos códigos esté presente
     if (!finalCode && !formData.barcode) {
       setError(PRODUCT_MESSAGES.CODE_OR_BARCODE_REQUIRED)
       setLoading(false)
       return
     }
 
-    // 🆕 ELIMINAR IMAGEN ANTIGUA SI EXISTE (solo al confirmar guardado)
     if (oldImageToDelete) {
       console.log('🗑️ Eliminando imagen anterior de R2 al confirmar guardado...')
       try {
@@ -136,9 +131,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
     }
   }
 
-  // 🆕 Limpiar imagen nueva sin confirmar si cancela
   const handleCancel = async () => {
-    // Si hay una imagen nueva subida pero no confirmada, eliminarla
     if (imageUrl && imageUrl !== formData.image_url) {
       console.log('🗑️ Cancelando: eliminando imagen temporal de R2...')
       try {
@@ -153,15 +146,11 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-
     setFormData(prev => ({
       ...prev,
       [name]: type === 'number' ? (value === '' ? 0 : Number(value)) : value
     }))
   }
-
-  const inputClasses = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-  const labelClasses = "block text-sm font-medium text-gray-700 mb-1"
 
   return (
     <div
@@ -170,10 +159,11 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
       onClick={handleCancel}
     >
       <div
-        className="bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-2xl md:max-h-[85vh] overflow-y-auto"
+        className="bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-3xl md:max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pb-32 md:p-6 md:pb-6">
+          {/* Header */}
           <div className="flex justify-between items-center mb-4 md:mb-6 bg-gray-100 md:bg-transparent px-4 md:px-0 py-5 md:py-0">
             <h2 className="text-3xl md:text-2xl font-bold text-gray-900">Nuevo Producto</h2>
             <button
@@ -194,72 +184,67 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 px-4 md:px-0">
-            {/* VERSION MÓVIL */}
-            <div className="space-y-4 md:hidden">
-              {/* 1. Stock Actual y Stock Mínimo */}
-              <div className="grid grid-cols-2 gap-3 -mt-2">
-                <div className="bg-gray-50 rounded-lg p-4 border-2 border-yellow-400">
-                  <input
-                    type="number"
-                    id="stock_quantity_card"
-                    name="stock_quantity"
-                    required
-                    min="0"
-                    value={formData.stock_quantity === 0 ? '' : formData.stock_quantity}
-                    onChange={handleChange}
-                    placeholder="0"
-                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none placeholder:text-gray-400"
-                  />
-                  <label htmlFor="stock_quantity_card" className="text-sm text-gray-500 mt-1 block">
-                    Stock Actual
-                  </label>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-4 border-2 border-red-400">
-                  <input
-                    type="number"
-                    id="minimum_stock_card"
-                    name="minimum_stock"
-                    required
-                    min="0"
-                    value={formData.minimum_stock === 0 ? '' : formData.minimum_stock}
-                    onChange={handleChange}
-                    placeholder="0"
-                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none placeholder:text-gray-400"
-                  />
-                  <label htmlFor="minimum_stock_card" className="text-sm text-gray-500 mt-1 block">
-                    Stock Mínimo
-                  </label>
-                </div>
-              </div>
-
-              {/* 2. Nombre del Producto */}
-              <div>
-                <label htmlFor="name_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
-                  Nombre del Producto *
-                </label>
+            {/* Stock Actual y Stock Mínimo - Tarjetas */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-lg p-4 border-2 border-yellow-400">
                 <input
-                  type="text"
-                  id="name_mobile"
-                  name="name"
-                  required
-                  value={formData.name}
+                  type="number"
+                  id="stock_quantity"
+                  name="stock_quantity"
+                  min="0"
+                  value={formData.stock_quantity === 0 ? '' : formData.stock_quantity}
                   onChange={handleChange}
-                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.name ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
-                  placeholder="Ej: Laptop Dell XPS 15"
+                  placeholder="0"
+                  className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none placeholder:text-gray-400"
                 />
+                <label htmlFor="stock_quantity" className="text-sm text-gray-500 mt-1 block">
+                  Stock Actual
+                </label>
               </div>
 
-              {/* 3. Código Único */}
+              <div className="bg-gray-50 rounded-lg p-4 border-2 border-red-400">
+                <input
+                  type="number"
+                  id="minimum_stock"
+                  name="minimum_stock"
+                  min="0"
+                  value={formData.minimum_stock === 0 ? '' : formData.minimum_stock}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none placeholder:text-gray-400"
+                />
+                <label htmlFor="minimum_stock" className="text-sm text-gray-500 mt-1 block">
+                  Stock Mínimo
+                </label>
+              </div>
+            </div>
+
+            {/* Nombre del Producto */}
+            <div>
+              <label htmlFor="name" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                Nombre del Producto *
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className={`w-full px-0 py-3 border-0 border-b-2 ${formData.name ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
+                placeholder="Ej: Laptop Dell XPS 15"
+              />
+            </div>
+
+            {/* Código Único y Código de Barra */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="code_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                <label htmlFor="code" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
                   Código Único {!formData.barcode && '*'}
                 </label>
                 <input
                   type="text"
-                  id="code_mobile"
+                  id="code"
                   name="code"
-                  required={!formData.barcode}
                   value={formData.code}
                   onChange={handleChange}
                   className={`w-full px-0 py-3 border-0 border-b-2 ${formData.code ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
@@ -267,214 +252,25 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
                 />
               </div>
 
-              {/* 4. Código de Barra */}
               <div>
-                <label htmlFor="barcode_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
-                  Código de Barra {!formData.code && '*'}
-                </label>
-                <input
-                  type="text"
-                  id="barcode_mobile"
-                  name="barcode"
-                  required={!formData.code}
-                  value={formData.barcode || ''}
-                  onChange={handleChange}
-                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.barcode ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
-                  placeholder="Escanear o ingresar código"
-                />
-              </div>
-
-              {/* 5. Precio Venta y Precio Costo */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gray-50 rounded-lg p-4 border-2 border-green-400">
-                  <input
-                    type="number"
-                    id="sale_price_card"
-                    name="sale_price"
-                    step="0.01"
-                    min="0"
-                    value={formData.sale_price || ''}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none"
-                  />
-                  <label htmlFor="sale_price_card" className="text-sm text-gray-500 mt-1 block">
-                    Precio Venta
-                  </label>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-4 border-2 border-blue-400">
-                  <input
-                    type="number"
-                    id="cost_price_card"
-                    name="cost_price"
-                    step="0.01"
-                    min="0"
-                    value={formData.cost_price || ''}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none"
-                  />
-                  <label htmlFor="cost_price_card" className="text-sm text-gray-500 mt-1 block">
-                    Precio Costo
-                  </label>
-                </div>
-              </div>
-
-              {/* 6. Categoría */}
-              <div>
-                <label htmlFor="category_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
-                  Categoría
-                </label>
-                <CategorySelector
-                  value={formData.category_id}
-                  onChange={(categoryId) => setFormData(prev => ({ ...prev, category_id: categoryId }))}
-                  categories={categories}
-                  onCreateNew={() => setShowCategoryForm(true)}
-                /></div>
-
-              {/* 7. Unidad de Medida */}
-              <div>
-                <label htmlFor="unit_of_measure_mobile" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
-                  Unidad de Medida
-                </label>
-                <input
-                  type="text"
-                  id="unit_of_measure_mobile"
-                  name="unit_of_measure"
-                  value={formData.unit_of_measure}
-                  onChange={handleChange}
-                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.unit_of_measure ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
-                  placeholder="Ej: Unidad, Kg, Litro"
-                />
-              </div>
-
-              {/* 8. Imagen del Producto */}
-              <div>
-                <ImageUpload
-                  currentImageUrl={imageUrl}
-                  onImageChange={setImageUrl}
-                  onOldImageDelete={handleOldImageDelete}
-                />
-              </div>
-
-              {/* 9. Producto Activo */}
-              <div className="flex items-center pt-2">
-                <input
-                  type="checkbox"
-                  id="active_mobile"
-                  name="active"
-                  checked={formData.active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="active_mobile" className="ml-2 text-sm font-medium text-gray-700">
-                  Producto Activo
-                </label>
-              </div>
-            </div>
-
-            {/* VERSION DESKTOP */}
-            <div className="hidden md:grid md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label htmlFor="name" className="block text-xs font-medium text-gray-500 mb-2">
-                  Nombre del Producto *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-0 py-2 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-lg font-medium text-gray-900 bg-transparent"
-                  placeholder="Ej: Laptop Dell XPS 15"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="code" className="block text-xs font-medium text-gray-500 mb-2">
-                  Código {!formData.barcode && '*'}
-                </label>
-                <input
-                  type="text"
-                  id="code"
-                  name="code"
-                  required={!formData.barcode}
-                  value={formData.code}
-                  onChange={handleChange}
-                  className="w-full px-0 py-2 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-lg font-medium text-gray-900 bg-transparent"
-                  placeholder={formData.barcode ? "Se generará automáticamente" : "Ej: PROD-001"}
-                />
-                {formData.barcode && !formData.code && (
-                  <p className="text-xs text-gray-400 mt-1">Se generará automáticamente (PROD-XXX)</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="barcode" className="block text-xs font-medium text-gray-500 mb-2">
+                <label htmlFor="barcode" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
                   Código de Barra {!formData.code && '*'}
                 </label>
                 <input
                   type="text"
                   id="barcode"
                   name="barcode"
-                  required={!formData.code}
                   value={formData.barcode || ''}
                   onChange={handleChange}
-                  className="w-full px-0 py-2 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:ring-0 text-lg font-medium text-gray-900 bg-transparent"
+                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.barcode ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
                   placeholder="Escanear o ingresar código"
                 />
               </div>
+            </div>
 
-              <div>
-                <label htmlFor="category_id" className="block text-xs font-medium text-gray-500 mb-2">
-                  Categoría
-                </label>
-                <CategorySelector
-                  value={formData.category_id}
-                  onChange={(categoryId) => setFormData(prev => ({ ...prev, category_id: categoryId }))}
-                  categories={categories}
-                  onCreateNew={() => setShowCategoryForm(true)}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="stock_quantity" className={labelClasses}>
-                  Cantidad en Stock *
-                </label>
-                <input
-                  type="number"
-                  id="stock_quantity"
-                  name="stock_quantity"
-                  required
-                  min="0"
-                  value={formData.stock_quantity}
-                  onChange={handleChange}
-                  className={inputClasses}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="minimum_stock" className={labelClasses}>
-                  Stock Mínimo *
-                </label>
-                <input
-                  type="number"
-                  id="minimum_stock"
-                  name="minimum_stock"
-                  required
-                  min="0"
-                  value={formData.minimum_stock}
-                  onChange={handleChange}
-                  className={inputClasses}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="sale_price" className={labelClasses}>
-                  Precio de Venta
-                </label>
+            {/* Precio Venta y Precio Costo - Tarjetas */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-lg p-4 border-2 border-green-400">
                 <input
                   type="number"
                   id="sale_price"
@@ -483,15 +279,15 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
                   min="0"
                   value={formData.sale_price || ''}
                   onChange={handleChange}
-                  className={inputClasses}
                   placeholder="0.00"
+                  className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none"
                 />
+                <label htmlFor="sale_price" className="text-sm text-gray-500 mt-1 block">
+                  Precio Venta
+                </label>
               </div>
 
-              <div>
-                <label htmlFor="cost_price" className={labelClasses}>
-                  Precio de Costo
-                </label>
+              <div className="bg-gray-50 rounded-lg p-4 border-2 border-blue-400">
                 <input
                   type="number"
                   id="cost_price"
@@ -500,13 +296,31 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
                   min="0"
                   value={formData.cost_price || ''}
                   onChange={handleChange}
-                  className={inputClasses}
                   placeholder="0.00"
+                  className="text-3xl font-bold text-gray-900 bg-transparent border-none p-0 w-full focus:ring-0 focus:outline-none"
+                />
+                <label htmlFor="cost_price" className="text-sm text-gray-500 mt-1 block">
+                  Precio Costo
+                </label>
+              </div>
+            </div>
+
+            {/* Categoría y Unidad de Medida */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="category" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                  Categoría
+                </label>
+                <CategorySelector
+                  value={formData.category_id}
+                  onChange={(categoryId) => setFormData(prev => ({ ...prev, category_id: categoryId }))}
+                  categories={categories}
+                  onCreateNew={() => setShowCategoryForm(true)}
                 />
               </div>
 
               <div>
-                <label htmlFor="unit_of_measure" className={labelClasses}>
+                <label htmlFor="unit_of_measure" className="block text-xs font-medium text-gray-500 mb-2 uppercase">
                   Unidad de Medida
                 </label>
                 <input
@@ -515,34 +329,37 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
                   name="unit_of_measure"
                   value={formData.unit_of_measure}
                   onChange={handleChange}
-                  className={inputClasses}
+                  className={`w-full px-0 py-3 border-0 border-b-2 ${formData.unit_of_measure ? 'border-green-500' : 'border-gray-200'} focus:border-green-500 focus:ring-0 focus:outline-none text-lg font-medium text-gray-900 bg-transparent transition-colors`}
                   placeholder="Ej: Unidad, Kg, Litro"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="active"
-                  name="active"
-                  checked={formData.active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-700">
-                  Producto Activo
-                </label>
-              </div>
-
-              <div className="md:col-span-2">
-                <ImageUpload
-                  currentImageUrl={imageUrl}
-                  onImageChange={setImageUrl}
-                  onOldImageDelete={handleOldImageDelete}
                 />
               </div>
             </div>
 
+            {/* Imagen del Producto */}
+            <div>
+              <ImageUpload
+                currentImageUrl={imageUrl}
+                onImageChange={setImageUrl}
+                onOldImageDelete={handleOldImageDelete}
+              />
+            </div>
+
+            {/* Producto Activo */}
+            <div className="flex items-center pt-2">
+              <input
+                type="checkbox"
+                id="active"
+                name="active"
+                checked={formData.active}
+                onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-700">
+                Producto Activo
+              </label>
+            </div>
+
+            {/* Botones */}
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t sticky bottom-0 bg-white pb-4 px-4 -mx-4 md:px-0 md:mx-0">
               <button
                 type="button"
