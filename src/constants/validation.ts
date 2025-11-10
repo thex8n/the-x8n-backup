@@ -105,4 +105,36 @@ export const POS_MESSAGES = {
   PRODUCT_ADDED: 'Producto agregado al carrito',
   PRODUCT_REMOVED: 'Producto eliminado del carrito',
   STOCK_UPDATED: 'Stock actualizado correctamente',
+  STOCK_LIMIT_REACHED: 'Stock máximo alcanzado',
+  CONFIRM_EXIT_TITLE: '¿Cerrar terminal de ventas?',
+  CART_HAS_PRODUCTS: 'Tienes productos en el carrito',
+  PRODUCT_NOT_FOUND: 'Producto no encontrado',
 } as const;
+
+/**
+ * Generates a stock limit message for POS
+ * @param productName - Name of the product
+ * @param available - Available stock quantity
+ */
+export function getPOSStockLimitMessage(productName: string, available: number): string {
+  return `Stock máximo alcanzado: ${productName} (${available} ${available === 1 ? 'unidad disponible' : 'unidades disponibles'})`;
+}
+
+/**
+ * Generates a product added message for POS
+ * @param productName - Name of the product
+ * @param inCart - Quantity in cart
+ * @param available - Available stock quantity
+ */
+export function getPOSProductAddedMessage(productName: string, inCart: number, available: number): string {
+  return `${productName} agregado (${inCart}/${available} disponibles)`;
+}
+
+/**
+ * Generates a cart summary message for exit confirmation
+ * @param itemCount - Number of items in cart
+ * @param total - Total amount
+ */
+export function getPOSCartSummaryMessage(itemCount: number, total: number): string {
+  return `Tienes ${itemCount} ${itemCount === 1 ? 'producto' : 'productos'} en el carrito por un total de $${total.toLocaleString()}.`;
+}
