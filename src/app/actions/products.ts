@@ -464,6 +464,74 @@ export async function revalidateInventory() {
   return { success: true }
 }
 
+/**
+ * Updates only the image_url of a product - OPTIMIZADO ⚡
+ * Elimina automáticamente la imagen anterior de R2
+ * @param productId - ID of the product to update
+ * @param imageUrl - New image URL (or null to remove)
+ * @returns Success with updated product data or error message
+ */
+export async function updateProductImage(productId: string, imageUrl: string | null) {
+  const user = await requireAuth()
+
+  if (!user) {
+    return { error: AUTH_MESSAGES.NOT_AUTHENTICATED }
+  }
+
+  const supabase = await createClient()
+
+  // 🔍 PASO 1: Obtener la imagen actual para eliminarla de R2
+  const { data: currentProduct, error: fetchError } = await supabase
+    .from('products')
+    .select('image_url')
+    .eq('id', productId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (fetchError) {
+    console.error('Error fetching product:', fetchError)
+    return { error: fetchError.message }
+  }
+
+  // 🗑️ PASO 2: Eliminar imagen anterior de R2 si existe
+  if (currentProduct?.image_url && currentProduct.image_url !== imageUrl) {
+    console.log('🗑️ Eliminando imagen anterior de R2...')
+    try {
+      const { deleteProductImage } = await import('@/app/actions/upload')
+      const deleteResult = await deleteProductImage(currentProduct.image_url)
+      
+      if (deleteResult.success) {
+        console.log('✅ Imagen anterior eliminada de R2')
+      } else {
+        console.warn('⚠️ No se pudo eliminar imagen anterior:', deleteResult.error)
+      }
+    } catch (deleteError) {
+      console.error('❌ Error eliminando imagen anterior:', deleteError)
+    }
+  }
+
+  // ✏️ PASO 3: Actualizar solo el campo image_url
+  const { data: product, error } = await supabase
+    .from('products')
+    .update({ image_url: imageUrl })
+    .eq('id', productId)
+    .eq('user_id', user.id)
+    .select(`
+      *,
+      category:categories(id, name, color, icon)
+    `)
+    .single()
+
+  if (error) {
+    console.error('Error updating product image:', error)
+    return { error: error.message }
+  }
+
+  console.log('✅ Imagen del producto actualizada')
+  revalidatePath('/inventory')
+  return { success: true, data: product }
+}
+
 // ========================================
 // 📦 INVENTORY HISTORY FUNCTIONS
 // ========================================
