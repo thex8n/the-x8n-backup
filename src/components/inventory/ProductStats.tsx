@@ -1,12 +1,27 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Product } from '@/types/product'
 
 interface ProductStatsProps {
   products: Product[]
+  onExpandChange?: (isExpanded: boolean) => void
 }
 
-export default function ProductStats({ products }: ProductStatsProps) {
+export default function ProductStats({ products, onExpandChange }: ProductStatsProps) {
+  const [isExpanded, setIsExpanded] = useState(true)
+
+  // Notificar al padre cada vez que cambia isExpanded
+  useEffect(() => {
+    if (onExpandChange) {
+      onExpandChange(isExpanded)
+    }
+  }, [isExpanded, onExpandChange])
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded)
+  }
+
   const totalProducts = products.length
 
   const totalRevenue = products.reduce((sum, product) => {
@@ -37,67 +52,89 @@ export default function ProductStats({ products }: ProductStatsProps) {
     }).format(value)
   }
 
+  const formatCompactCurrency = (value: number) => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`
+    }
+    if (value >= 1000) {
+      return `$${(value / 1000).toFixed(0)}K`
+    }
+    return `$${value}`
+  }
+
   const stats = [
     {
       label: 'Total de Productos',
+      labelShort: 'Total',
       value: totalProducts.toLocaleString('es-CO'),
+      valueCompact: totalProducts,
       change: '+3 productos',
       trend: 'up',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 md-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
       ),
     },
     {
       label: 'Ingreso de Productos',
+      labelShort: 'Ingreso',
       value: formatCurrency(totalRevenue),
+      valueCompact: formatCompactCurrency(totalRevenue),
       change: '+9%',
       trend: 'up',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 md-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
     },
     {
       label: 'Productos Vendidos',
+      labelShort: 'Vendidos',
       value: totalSold.toLocaleString('es-CO'),
+      valueCompact: totalSold,
       change: '+7%',
       trend: 'up',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 md-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
         </svg>
       ),
     },
     {
       label: 'Promedio Mensual',
+      labelShort: 'Promedio',
       value: avgMonthlySales.toLocaleString('es-CO'),
+      valueCompact: avgMonthlySales,
       change: '+5%',
       trend: 'up',
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 md-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
     },
     {
       label: 'Stock Bajo',
+      labelShort: 'Bajo',
       value: lowStock.toLocaleString('es-CO'),
+      valueCompact: lowStock,
       alert: lowStock > 0,
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 md-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
       ),
     },
     {
       label: 'Stock Vacío',
+      labelShort: 'Vacío',
       value: emptyStock.toLocaleString('es-CO'),
+      valueCompact: emptyStock,
       alert: emptyStock > 0,
       icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 md-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
         </svg>
       ),
@@ -105,50 +142,106 @@ export default function ProductStats({ products }: ProductStatsProps) {
   ]
 
   return (
-    <div className="flex gap-0 mb-8 overflow-x-auto">
-      {stats.map((stat, index) => (
-        <div
-          key={index}
-          className={`flex-1 bg-white shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow ${index === 0 ? 'rounded-l-lg' : ''} ${index === stats.length - 1 ? 'rounded-r-lg' : ''} ${index !== 0 ? 'border-l-0' : ''}`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-100 text-gray-600">
-              {stat.icon}
-            </div>
-            {!stat.alert && stat.change && (
-              <span className="text-sm text-gray-500 flex items-center gap-1">
-                vs último mes
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {stat.value}
-            </p>
-            {!stat.alert && stat.change && (
-              <p className={`text-sm font-medium flex items-center gap-1 ${
-                stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {stat.trend === 'up' ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+    <>
+      {/* 📱 VERSIÓN MÓVIL - Con botón toggle superpuesto */}
+      <div className="md:hidden">
+        {/* Contenedor que desaparece completamente */}
+        <div className={`fixed top-[70px] left-0 right-0 bg-white border-b border-gray-200 z-30 shadow-sm transition-all duration-300 ${
+          isExpanded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
+        }`}>
+          <div className="flex gap-1 overflow-x-auto px-4 scrollbar-hide">
+            {stats.map((stat, index) => (
+              <div
+                key={index}
+                className="flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2 min-w-[70px] shrink-0"
+              >
+                <div className="text-gray-600 mb-1">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {stat.icon.props.children}
                   </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                )}
-                {stat.change}
-              </p>
-            )}
+                </div>
+                <p className={`text-sm font-bold leading-none mb-0.5 ${stat.alert ? 'text-red-600' : 'text-gray-900'}`}>
+                  {stat.valueCompact}
+                </p>
+                <p className="text-[10px] text-gray-500 text-center leading-tight">
+                  {stat.labelShort}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
-      ))}
-    </div>
+
+        {/* Botón toggle superpuesto - SIEMPRE visible */}
+        <button
+          onClick={toggleExpanded}
+          className={`fixed left-4 z-50 bg-white border border-gray-300 rounded-full shadow-sm flex items-center justify-center transition-all duration-300 hover:shadow-md ${
+            isExpanded ? 'top-[130px] w-6 h-6' : 'top-[60px] w-8 h-8'
+          }`}
+          aria-label={isExpanded ? "Ocultar estadísticas" : "Mostrar estadísticas"}
+        >
+          <svg 
+            className={`text-gray-600 transition-all duration-300 ${
+              isExpanded ? 'w-3 h-3' : 'w-4 h-4'
+            }`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            {isExpanded ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* 💻 VERSIÓN DESKTOP - Sin cambios */}
+      <div className="hidden md:flex gap-0 mb-8 overflow-x-auto">
+        {stats.map((stat, index) => (
+          <div
+            key={index}
+            className={`flex-1 bg-white shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow ${index === 0 ? 'rounded-l-lg' : ''} ${index === stats.length - 1 ? 'rounded-r-lg' : ''} ${index !== 0 ? 'border-l-0' : ''}`}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-100 text-gray-600">
+                {stat.icon}
+              </div>
+              {!stat.alert && stat.change && (
+                <span className="text-sm text-gray-500 flex items-center gap-1">
+                  vs último mes
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stat.value}
+              </p>
+              {!stat.alert && stat.change && (
+                <p className={`text-sm font-medium flex items-center gap-1 ${
+                  stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {stat.trend === 'up' ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  )}
+                  {stat.change}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }

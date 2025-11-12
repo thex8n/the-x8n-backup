@@ -45,6 +45,7 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [isStatsExpanded, setIsStatsExpanded] = useState(true)
 
   const loadProducts = async () => {
     setLoading(true)
@@ -122,15 +123,12 @@ export default function InventoryPage() {
 
   const handleProductNotFound = (barcode: string) => {
     setScannedBarcode(barcode)
-    // No cerramos el escáner, solo abrimos el formulario sobre él
     setShowAddProductForm(true)
   }
 
   const handleProductAdded = async (newProduct: ProductWithCategory) => {
-    // Recargar productos
     await loadProducts()
 
-    // Recuperar historial guardado desde localStorage
     const savedHistory = localStorage.getItem('scanner_history')
     let history: ScannedProduct[] = []
 
@@ -145,7 +143,6 @@ export default function InventoryPage() {
       }
     }
 
-    // Agregar el nuevo producto al historial
     const newHistoryItem: ScannedProduct = {
       id: newProduct.id,
       name: newProduct.name,
@@ -157,18 +154,16 @@ export default function InventoryPage() {
 
     history.unshift(newHistoryItem)
 
-    // Guardar el historial actualizado
     setScannerHistory(history)
     localStorage.setItem('scanner_history', JSON.stringify(history))
 
-    // Solo cerrar el formulario, el escáner permanece abierto
     setShowAddProductForm(false)
     setScannedBarcode(null)
   }
 
   const handleScannerClose = () => {
     setShowBarcodeScanner(false)
-    setScannerHistory([]) // Limpiar historial al cerrar
+    setScannerHistory([])
   }
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -210,7 +205,9 @@ export default function InventoryPage() {
         onHistoryClick={() => router.push('/inventory_history')}
       />
 
-      <div className="p-8 pb-32 pt-20 md:pt-8 md:pb-8">
+      <div className={`p-8 pb-32 md:pt-8 md:pb-8 transition-all duration-300 ${
+        isStatsExpanded ? 'pt-40' : 'pt-[100px]'
+      }`}>
         <div className="hidden md:block mb-6 -mt-4">
           <div className="flex items-center justify-between mb-6 relative">
             <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
@@ -231,9 +228,7 @@ export default function InventoryPage() {
           <div className="border-t border-gray-300 mb-6"></div>
         </div>
 
-        <div className="hidden md:block">
-          <ProductStats products={filteredProducts} />
-        </div>
+        <ProductStats products={filteredProducts} onExpandChange={setIsStatsExpanded} />
 
         <div className="hidden md:flex mb-6 items-center gap-3 flex-wrap">
           <button
