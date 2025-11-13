@@ -59,13 +59,17 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
       // Área de crop inicial - ocupa 100% de la imagen (completamente grande)
       const initialCropSize = Math.min(displayWidth, displayHeight)
 
-      // Calcular la posición para centrar en el contenedor
+      // Calcular la posición de la imagen en el contenedor
       const imgLeft = (containerWidth - displayWidth) / 2
       const imgTop = (containerHeight - displayHeight) / 2
 
+      // Centrar la cuadrícula dentro de la imagen
+      const cropX = imgLeft + (displayWidth - initialCropSize) / 2
+      const cropY = imgTop + (displayHeight - initialCropSize) / 2
+
       setCropArea({
-        x: imgLeft,
-        y: imgTop,
+        x: cropX,
+        y: cropY,
         width: initialCropSize,
         height: initialCropSize
       })
@@ -140,7 +144,7 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
           return { ...prev, x: newX, y: newY }
         })
       } else if (isResizing) {
-        // Redimensionar la cuadrícula con límites
+        // Redimensionar la cuadrícula con límites y más precisión
         setCropArea(prev => {
           const minSize = 100
           let newWidth = prev.width
@@ -148,31 +152,46 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
           let newX = prev.x
           let newY = prev.y
 
+          // Sensibilidad de 1px por cada 50px de movimiento
+          const RESIZE_SENSITIVITY = 0.02 // 2% de sensibilidad = 1px por cada 50px de movimiento
+          const adjustedDeltaX = deltaX * RESIZE_SENSITIVITY
+          const adjustedDeltaY = deltaY * RESIZE_SENSITIVITY
+
           switch (isResizing) {
             case 'nw':
-              newWidth = prev.width - deltaX
-              newHeight = prev.height - deltaY
-              if (newWidth >= minSize) newX = dragStart.cropX + deltaX
-              if (newHeight >= minSize) newY = dragStart.cropY + deltaY
+              // Esquina superior izquierda: achica/agranda desde arriba-izquierda
+              newWidth = prev.width - adjustedDeltaX
+              newHeight = prev.height - adjustedDeltaY
+              newX = dragStart.cropX + adjustedDeltaX
+              newY = dragStart.cropY + adjustedDeltaY
               break
             case 'ne':
-              newWidth = prev.width + deltaX
-              newHeight = prev.height - deltaY
-              if (newHeight >= minSize) newY = dragStart.cropY + deltaY
+              // Esquina superior derecha: achica/agranda desde arriba-derecha
+              newWidth = prev.width + adjustedDeltaX
+              newHeight = prev.height - adjustedDeltaY
+              newX = dragStart.cropX
+              newY = dragStart.cropY + adjustedDeltaY
               break
             case 'sw':
-              newWidth = prev.width - deltaX
-              newHeight = prev.height + deltaY
-              if (newWidth >= minSize) newX = dragStart.cropX + deltaX
+              // Esquina inferior izquierda: achica/agranda desde abajo-izquierda
+              newWidth = prev.width - adjustedDeltaX
+              newHeight = prev.height + adjustedDeltaY
+              newX = dragStart.cropX + adjustedDeltaX
+              newY = dragStart.cropY
               break
             case 'se':
-              newWidth = prev.width + deltaX
-              newHeight = prev.height + deltaY
+              // Esquina inferior derecha: achica/agranda desde abajo-derecha
+              newWidth = prev.width + adjustedDeltaX
+              newHeight = prev.height + adjustedDeltaY
+              newX = dragStart.cropX
+              newY = dragStart.cropY
               break
           }
 
-          // Mantener aspecto cuadrado
-          let size = Math.max(minSize, Math.min(newWidth, newHeight))
+          // Mantener aspecto cuadrado - usar el MENOR cambio para más control y suavidad
+          // Esto evita que se achique/agrande muy rápido con pequeños movimientos
+          let size = Math.min(Math.abs(newWidth), Math.abs(newHeight))
+          size = Math.max(minSize, size)
 
           // Limitar el tamaño para que no salga de la imagen
           const maxWidthFromLeft = imgRight - newX
@@ -377,7 +396,7 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
 
           {/* Área de recorte móvil */}
           <div
-            className="absolute cursor-move touch-none"
+            className="absolute cursor-move touch-none border border-white/20"
             style={{
               left: `${cropArea.x}px`,
               top: `${cropArea.y}px`,
@@ -390,55 +409,55 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
             {/* Cuadrícula 3x3 */}
             <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
               {/* Líneas verticales */}
-              <line x1="33.33%" y1="0" x2="33.33%" y2="100%" stroke="white" strokeWidth="1" opacity="0.5" />
-              <line x1="66.66%" y1="0" x2="66.66%" y2="100%" stroke="white" strokeWidth="1" opacity="0.5" />
+              <line x1="33.33%" y1="0" x2="33.33%" y2="100%" stroke="white" strokeWidth="1" opacity="0.2" />
+              <line x1="66.66%" y1="0" x2="66.66%" y2="100%" stroke="white" strokeWidth="1" opacity="0.2" />
               {/* Líneas horizontales */}
-              <line x1="0" y1="33.33%" x2="100%" y2="33.33%" stroke="white" strokeWidth="1" opacity="0.5" />
-              <line x1="0" y1="66.66%" x2="100%" y2="66.66%" stroke="white" strokeWidth="1" opacity="0.5" />
+              <line x1="0" y1="33.33%" x2="100%" y2="33.33%" stroke="white" strokeWidth="1" opacity="0.2" />
+              <line x1="0" y1="66.66%" x2="100%" y2="66.66%" stroke="white" strokeWidth="1" opacity="0.2" />
             </svg>
 
             {/* Esquinas estilo WhatsApp */}
             <div className="absolute -inset-0.5 pointer-events-none">
               {/* Esquina superior izquierda */}
               <div className="absolute top-0 left-0">
-                <div className="absolute top-0 left-0 w-[50px] h-[3px] bg-white" />
-                <div className="absolute top-0 left-0 w-[3px] h-[50px] bg-white" />
+                <div className="absolute top-0 left-0 w-[30px] h-[3px] bg-white" />
+                <div className="absolute top-0 left-0 w-[3px] h-[30px] bg-white" />
               </div>
               {/* Esquina superior derecha */}
               <div className="absolute top-0 right-0">
-                <div className="absolute top-0 right-0 w-[50px] h-[3px] bg-white" />
-                <div className="absolute top-0 right-0 w-[3px] h-[50px] bg-white" />
+                <div className="absolute top-0 right-0 w-[30px] h-[3px] bg-white" />
+                <div className="absolute top-0 right-0 w-[3px] h-[30px] bg-white" />
               </div>
               {/* Esquina inferior izquierda */}
               <div className="absolute bottom-0 left-0">
-                <div className="absolute bottom-0 left-0 w-[50px] h-[3px] bg-white" />
-                <div className="absolute bottom-0 left-0 w-[3px] h-[50px] bg-white" />
+                <div className="absolute bottom-0 left-0 w-[30px] h-[3px] bg-white" />
+                <div className="absolute bottom-0 left-0 w-[3px] h-[30px] bg-white" />
               </div>
               {/* Esquina inferior derecha */}
               <div className="absolute bottom-0 right-0">
-                <div className="absolute bottom-0 right-0 w-[50px] h-[3px] bg-white" />
-                <div className="absolute bottom-0 right-0 w-[3px] h-[50px] bg-white" />
+                <div className="absolute bottom-0 right-0 w-[30px] h-[3px] bg-white" />
+                <div className="absolute bottom-0 right-0 w-[3px] h-[30px] bg-white" />
               </div>
             </div>
 
             {/* Handles invisibles para redimensionar */}
             <div
-              className="absolute -top-6 -left-6 w-20 h-20 cursor-nw-resize z-10"
+              className="absolute -top-4 -left-4 w-12 h-12 cursor-nw-resize z-10"
               onMouseDown={(e) => handleMouseDown(e, 'nw')}
               onTouchStart={(e) => handleTouchStart(e, 'nw')}
             />
             <div
-              className="absolute -top-6 -right-6 w-20 h-20 cursor-ne-resize z-10"
+              className="absolute -top-4 -right-4 w-12 h-12 cursor-ne-resize z-10"
               onMouseDown={(e) => handleMouseDown(e, 'ne')}
               onTouchStart={(e) => handleTouchStart(e, 'ne')}
             />
             <div
-              className="absolute -bottom-6 -left-6 w-20 h-20 cursor-sw-resize z-10"
+              className="absolute -bottom-4 -left-4 w-12 h-12 cursor-sw-resize z-10"
               onMouseDown={(e) => handleMouseDown(e, 'sw')}
               onTouchStart={(e) => handleTouchStart(e, 'sw')}
             />
             <div
-              className="absolute -bottom-6 -right-6 w-20 h-20 cursor-se-resize z-10"
+              className="absolute -bottom-4 -right-4 w-12 h-12 cursor-se-resize z-10"
               onMouseDown={(e) => handleMouseDown(e, 'se')}
               onTouchStart={(e) => handleTouchStart(e, 'se')}
             />
