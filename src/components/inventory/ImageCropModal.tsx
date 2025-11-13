@@ -354,14 +354,21 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
   return (
     <>
       {/* Fondo negro completo */}
-      <div className="fixed inset-0 bg-black z-120" />
+      <div
+        className="fixed inset-0 bg-black z-120"
+        onClick={(e) => e.stopPropagation()}
+      />
 
       {/* Contenedor principal */}
-      <div className="fixed inset-0 z-121 flex flex-col">
+      <div
+        className="fixed inset-0 z-121 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Área de imagen */}
         <div
           ref={containerRef}
           className="flex-1 relative bg-black flex items-center justify-center overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Imagen fija centrada */}
           <img
@@ -403,6 +410,7 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
               width: `${cropArea.width}px`,
               height: `${cropArea.height}px`,
             }}
+            onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => handleMouseDown(e, 'move')}
             onTouchStart={(e) => handleTouchStart(e, 'move')}
           >
@@ -469,7 +477,10 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
           {/* Botones principales */}
           <div className="flex items-center justify-between">
             <button
-              onClick={onClose}
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
               disabled={uploading}
               className="text-white text-[17px] font-normal disabled:opacity-50 min-w-[90px] text-left"
             >
@@ -477,7 +488,10 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
             </button>
 
             <button
-              onClick={handleRotate}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleRotate()
+              }}
               disabled={uploading}
               className="flex items-center justify-center disabled:opacity-50"
               aria-label="Rotar 90°"
@@ -488,7 +502,10 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
             </button>
 
             <button
-              onClick={handleSave}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleSave()
+              }}
               disabled={uploading}
               className="text-white text-[17px] font-normal disabled:opacity-50 min-w-[90px] text-right"
             >

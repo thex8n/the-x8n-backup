@@ -28,7 +28,6 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [oldImageToDelete, setOldImageToDelete] = useState<string | null>(null)
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false)
-  const [originRect, setOriginRect] = useState<DOMRect | null>(null)
   const imageRef = useRef<HTMLDivElement>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
@@ -158,12 +157,12 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-start justify-center overflow-y-auto"
+      className={`fixed inset-0 bg-black/30 flex items-start justify-center ${isImageViewerOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}
       style={{ zIndex: 70 }}
       onClick={handleCancel}
     >
       <div
-        className="bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-3xl md:max-h-[85vh] overflow-y-auto"
+        className={`bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-3xl md:max-h-[85vh] ${isImageViewerOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pb-32 md:p-6 md:pb-6">
@@ -348,12 +347,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
                   </label>
                   <div
                     ref={imageRef}
-                    onClick={() => {
-                      if (imageRef.current) {
-                        setOriginRect(imageRef.current.getBoundingClientRect())
-                      }
-                      setIsImageViewerOpen(true)
-                    }}
+                    onClick={() => setIsImageViewerOpen(true)}
                     className="relative w-32 h-32 cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors"
                   >
                     <img
@@ -424,16 +418,16 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
       </div>
 
       {/* ImageViewer Modal */}
-      {isImageViewerOpen && imageUrl && (
+      {isImageViewerOpen && imageUrl && imageRef.current && (
         <ImageViewer
           imageUrl={imageUrl}
           productName={formData.name || 'Nuevo Producto'}
           onClose={() => setIsImageViewerOpen(false)}
           onImageUpdate={(newUrl) => {
             setImageUrl(newUrl)
-            setIsImageViewerOpen(false)
+            // No cerrar aquí - el ImageViewer se cierra solo después del checkmark
           }}
-          originRect={originRect}
+          originRect={imageRef.current.getBoundingClientRect()}
         />
       )}
     </div>

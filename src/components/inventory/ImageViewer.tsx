@@ -146,8 +146,10 @@ export default function ImageViewer({
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
     const file = e.target.files?.[0]
-    if (!file || !productId) return
+    if (!file) return
 
     // Crear URL temporal para el crop
     const tempUrl = URL.createObjectURL(file)
@@ -168,21 +170,36 @@ export default function ImageViewer({
       const uploadResult = await uploadProductImage(formData)
 
       if (uploadResult.success && uploadResult.url) {
-        const updateResult = await updateProductImage(productId!, uploadResult.url)
-        
-        if (updateResult.success) {
+        // Si NO hay productId, solo actualizar localmente (para formulario de agregar)
+        if (!productId) {
           setCurrentImage(uploadResult.url)
           setUpdated(true)
-          
+
           if (onImageUpdate) {
             onImageUpdate(uploadResult.url)
           }
-          
+
           setTimeout(() => {
             handleClose()
           }, 1500)
         } else {
-          setError(updateResult.error || 'Error al actualizar producto')
+          // Si hay productId, actualizar en la base de datos (producto existente)
+          const updateResult = await updateProductImage(productId, uploadResult.url)
+
+          if (updateResult.success) {
+            setCurrentImage(uploadResult.url)
+            setUpdated(true)
+
+            if (onImageUpdate) {
+              onImageUpdate(uploadResult.url)
+            }
+
+            setTimeout(() => {
+              handleClose()
+            }, 1500)
+          } else {
+            setError(updateResult.error || 'Error al actualizar producto')
+          }
         }
       } else {
         setError(uploadResult.error || 'Error al subir imagen')
@@ -559,13 +576,16 @@ export default function ImageViewer({
         }
       `}</style>
 
-      <div 
+      <div
         className="fixed inset-0 bg-black/90 z-110 overscroll-none touch-none"
         style={{
           opacity: isClosing ? 0 : 1,
           transition: 'opacity 0.15s ease-out'
         }}
-        onClick={handleClose}
+        onClick={(e) => {
+          e.stopPropagation()
+          handleClose()
+        }}
         onTouchMove={(e) => e.preventDefault()}
       />
 
@@ -579,7 +599,10 @@ export default function ImageViewer({
       >
         {/* Left: Back arrow + texto */}
         <button
-          onClick={handleClose}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleClose()
+          }}
           disabled={uploading}
           className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
           aria-label="Volver"
@@ -589,22 +612,23 @@ export default function ImageViewer({
         </button>
 
         {/* Right: Pencil edit button */}
-        {productId && (
-          <button
-            onClick={() => setShowOptions(true)}
-            disabled={uploading || updated}
-            className="md:hidden p-2 hover:bg-white/10 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Editar imagen"
-          >
-            {uploading ? (
-              <Loader2 className="w-6 h-6 text-white animate-spin" />
-            ) : updated ? (
-              <CheckCircle className="w-6 h-6 text-green-400" />
-            ) : (
-              <Pencil className="w-6 h-6 text-white" />
-            )}
-          </button>
-        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setShowOptions(true)
+          }}
+          disabled={uploading || updated}
+          className="md:hidden p-4 hover:bg-white/10 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Editar imagen"
+        >
+          {uploading ? (
+            <Loader2 className="w-6 h-6 text-white animate-spin" />
+          ) : updated ? (
+            <CheckCircle className="w-6 h-6 text-green-400" />
+          ) : (
+            <Pencil className="w-6 h-6 text-white" />
+          )}
+        </button>
       </div>
 
       <div
@@ -612,6 +636,7 @@ export default function ImageViewer({
         onClick={(e) => {
           // Cerrar si el clic fue directamente en este contenedor (no en la imagen)
           if (e.target === e.currentTarget) {
+            e.stopPropagation()
             handleClose()
           }
         }}
@@ -669,7 +694,10 @@ export default function ImageViewer({
         <>
           <div
             className="fixed inset-0 bg-black/50 z-112"
-            onClick={() => setShowOptions(false)}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowOptions(false)
+            }}
           />
           
           <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-113 animate-slideUp shadow-2xl">
@@ -681,7 +709,10 @@ export default function ImageViewer({
               <div className="grid grid-cols-2 gap-4 px-4">
                 <button
                   type="button"
-                  onClick={handleTakePhoto}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleTakePhoto()
+                  }}
                   className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
                 >
                   <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
@@ -692,7 +723,10 @@ export default function ImageViewer({
 
                 <button
                   type="button"
-                  onClick={handleChooseFromGallery}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleChooseFromGallery()
+                  }}
                   className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
                 >
                   <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
@@ -712,6 +746,7 @@ export default function ImageViewer({
         accept="image/*"
         capture="environment"
         onChange={handleFileSelect}
+        onClick={(e) => e.stopPropagation()}
         className="hidden"
       />
 
@@ -720,6 +755,7 @@ export default function ImageViewer({
         type="file"
         accept="image/jpeg,image/png,image/webp"
         onChange={handleFileSelect}
+        onClick={(e) => e.stopPropagation()}
         className="hidden"
       />
 
