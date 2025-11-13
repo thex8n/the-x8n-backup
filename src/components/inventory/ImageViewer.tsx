@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Pencil, Camera, ImagePlus, Loader2, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Pencil, Camera, ImagePlus, Loader2, CheckCircle } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { uploadProductImage } from '@/app/actions/upload'
 import { updateProductImage } from '@/app/actions/products'
@@ -31,31 +31,56 @@ export default function ImageViewer({
   const [error, setError] = useState<string | null>(null)
   const [currentImage, setCurrentImage] = useState(imageUrl)
   const [tempImageUrl, setTempImageUrl] = useState<string | null>(null)
-  
+
+  // Estados para zoom y pan
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 })
+  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const imageContainerRef = useRef<HTMLDivElement>(null)
 
-  // Bloquear scroll
+  // Bloquear scroll y zoom del viewport
   useEffect(() => {
     const scrollY = window.scrollY
     const scrollX = window.scrollX
-    
+
     document.body.style.overflow = 'hidden'
-    
+
     const mainElement = document.querySelector('main')
     const htmlElement = document.documentElement
-    
+
     if (mainElement) {
       mainElement.style.overflow = 'hidden'
     }
-    
+
     htmlElement.style.overflow = 'hidden'
     htmlElement.style.position = 'fixed'
     htmlElement.style.width = '100%'
     htmlElement.style.height = '100%'
     htmlElement.style.top = `-${scrollY}px`
     htmlElement.style.left = `-${scrollX}px`
-    
+
+    // Prevenir zoom del viewport en móvil
+    let viewportMeta = document.querySelector('meta[name="viewport"]') as HTMLMetaElement
+    const originalContent = viewportMeta?.content || ''
+
+    if (viewportMeta) {
+      viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+    }
+
+    // Prevenir gestos de zoom en iOS
+    const preventZoom = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault()
+      }
+    }
+
+    document.addEventListener('touchmove', preventZoom, { passive: false })
+
     return () => {
       document.body.style.overflow = 'unset'
       htmlElement.style.overflow = 'unset'
@@ -64,11 +89,18 @@ export default function ImageViewer({
       htmlElement.style.height = 'auto'
       htmlElement.style.top = '0'
       htmlElement.style.left = '0'
-      
+
       if (mainElement) {
         mainElement.style.overflow = 'unset'
       }
-      
+
+      // Restaurar viewport original
+      if (viewportMeta && originalContent) {
+        viewportMeta.content = originalContent
+      }
+
+      document.removeEventListener('touchmove', preventZoom)
+
       window.scrollTo(scrollX, scrollY)
     }
   }, [])
@@ -151,6 +183,130 @@ export default function ImageViewer({
 
   const handleChooseFromGallery = () => {
     fileInputRef.current?.click()
+  }
+
+  // Resetear zoom cuando cambia la imagen
+  useEffect(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+  }, [currentImage])
+
+  // Función para obtener la distancia entre dos puntos táctiles
+  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    const dx = touch1.clientX - touch2.clientX
+    const dy = touch1.clientY - touch2.clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  // Manejar zoom con rueda del mouse
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY * -0.001
+    const newScale = Math.min(Math.max(1, scale + delta), 4)
+    setScale(newScale)
+
+    // Si vuelve a escala 1, resetear posición
+    if (newScale === 1) {
+      setPosition({ x: 0, y: 0 })
+    }
+  }
+
+  // Manejar inicio de pan (mouse)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale > 1) {
+      setIsPanning(true)
+      setStartPos({ x: e.clientX - position.x, y: e.clientY - position.y })
+    }
+  }
+
+  // Manejar movimiento de pan (mouse)
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning && scale > 1) {
+      setPosition({
+        x: e.clientX - startPos.x,
+        y: e.clientY - startPos.y
+      })
+    }
+  }
+
+  // Manejar fin de pan (mouse)
+  const handleMouseUp = () => {
+    setIsPanning(false)
+  }
+
+  // Manejar pinch-to-zoom y pan (touch)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Prevenir comportamiento por defecto solo cuando hay múltiples toques
+    if (e.touches.length > 1) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    if (e.touches.length === 2) {
+      // Inicio de pinch
+      const distance = getDistance(e.touches[0], e.touches[1])
+      setLastPinchDistance(distance)
+    } else if (e.touches.length === 1 && scale > 1) {
+      // Inicio de pan
+      setIsPanning(true)
+      setStartPos({
+        x: e.touches[0].clientX - position.x,
+        y: e.touches[0].clientY - position.y
+      })
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastPinchDistance !== null) {
+      // Pinch zoom - prevenir zoom del navegador
+      e.preventDefault()
+      e.stopPropagation()
+
+      const distance = getDistance(e.touches[0], e.touches[1])
+      const delta = (distance - lastPinchDistance) * 0.01
+      const newScale = Math.min(Math.max(1, scale + delta), 4)
+      setScale(newScale)
+      setLastPinchDistance(distance)
+
+      // Si vuelve a escala 1, resetear posición
+      if (newScale === 1) {
+        setPosition({ x: 0, y: 0 })
+      }
+    } else if (e.touches.length === 1 && isPanning && scale > 1) {
+      // Pan - solo prevenir cuando hay zoom activo
+      e.preventDefault()
+      e.stopPropagation()
+
+      setPosition({
+        x: e.touches[0].clientX - startPos.x,
+        y: e.touches[0].clientY - startPos.y
+      })
+    }
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      setIsPanning(false)
+      setLastPinchDistance(null)
+    }
+  }
+
+  // Doble tap para zoom
+  const lastTapRef = useRef<number>(0)
+  const handleDoubleTap = (e: React.MouseEvent | React.TouchEvent) => {
+    const now = Date.now()
+    const DOUBLE_TAP_DELAY = 300
+
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Doble tap detectado
+      if (scale === 1) {
+        setScale(2)
+      } else {
+        setScale(1)
+        setPosition({ x: 0, y: 0 })
+      }
+    }
+    lastTapRef.current = now
   }
 
   const getImageStyle = () => {
@@ -241,56 +397,81 @@ export default function ImageViewer({
         onTouchMove={(e) => e.preventDefault()}
       />
 
+      {/* Header fijo - fuera del contenedor de zoom */}
       <div
-        className="fixed inset-0 z-111 flex items-center justify-center p-4"
-        onClick={handleClose}
+        className="fixed top-4 left-4 right-4 z-112 flex items-center justify-between"
+        style={{
+          opacity: isClosing ? 0 : 1,
+          transition: 'opacity 0.15s ease-out'
+        }}
+      >
+        {/* Left: Back arrow + texto */}
+        <button
+          onClick={handleClose}
+          disabled={uploading}
+          className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
+          aria-label="Volver"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" strokeWidth={2.5} />
+          <span className="text-white font-medium text-sm">Imagen del producto</span>
+        </button>
+
+        {/* Right: Pencil edit button */}
+        {productId && (
+          <button
+            onClick={() => setShowOptions(true)}
+            disabled={uploading || updated}
+            className="md:hidden p-2 hover:bg-white/10 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Editar imagen"
+          >
+            {uploading ? (
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
+            ) : updated ? (
+              <CheckCircle className="w-6 h-6 text-green-400" />
+            ) : (
+              <Pencil className="w-6 h-6 text-white" />
+            )}
+          </button>
+        )}
+      </div>
+
+      <div
+        ref={imageContainerRef}
+        className="fixed inset-0 z-111 flex items-center justify-center overflow-hidden"
+        style={{
+          paddingTop: '4rem', // Espacio para el header
+          touchAction: 'none' // Prevenir zoom del navegador en móvil
+        }}
+        onClick={(e) => {
+          if (scale === 1) handleClose()
+          else {
+            e.stopPropagation()
+            handleDoubleTap(e)
+          }
+        }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div
-          className="relative max-w-4xl max-h-full"
+          className="relative w-full h-full flex items-center justify-center"
           style={getImageStyle()}
-          onClick={(e) => e.stopPropagation()}
         >
-          <button
-            onClick={handleClose}
-            disabled={uploading}
-            className="absolute -top-12 right-0 p-2 hover:bg-white/10 rounded-full transition-colors z-10 disabled:opacity-50"
-            style={{
-              opacity: isClosing ? 0 : 1,
-              transition: 'opacity 0.15s ease-out'
-            }}
-            aria-label="Cerrar"
-          >
-            <X className="w-6 h-6 text-white" strokeWidth={2.5} />
-          </button>
-
-          {productId && (
-            <button
-              onClick={() => setShowOptions(true)}
-              disabled={uploading || updated}
-              className="md:hidden absolute -bottom-12 right-0 p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                opacity: isClosing ? 0 : 1,
-                transition: 'opacity 0.15s ease-out'
-              }}
-              aria-label="Editar imagen"
-            >
-              {uploading ? (
-                <Loader2 className="w-6 h-6 text-gray-700 animate-spin" />
-              ) : updated ? (
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              ) : (
-                <Pencil className="w-6 h-6 text-gray-700" />
-              )}
-            </button>
-          )}
-
-          <img 
+          <img
             src={currentImage}
             alt={productName}
-            className="w-full h-auto object-contain rounded-lg"
+            className="max-w-full max-h-full object-contain pointer-events-none select-none"
             style={{
-              maxHeight: 'calc(100vh - 8rem)',
+              transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+              transition: isPanning ? 'none' : 'transform 0.2s ease-out',
+              cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
             }}
+            draggable={false}
           />
 
           {updated && (
