@@ -4,6 +4,7 @@ import { X, Pencil, Camera, ImagePlus, Loader2, CheckCircle } from 'lucide-react
 import { useEffect, useState, useRef } from 'react'
 import { uploadProductImage } from '@/app/actions/upload'
 import { updateProductImage } from '@/app/actions/products'
+import ImageCropModal from './ImageCropModal'
 
 interface ImageViewerProps {
   imageUrl: string
@@ -24,15 +25,17 @@ export default function ImageViewer({
 }: ImageViewerProps) {
   const [isClosing, setIsClosing] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
+  const [showCropModal, setShowCropModal] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [updated, setUpdated] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentImage, setCurrentImage] = useState(imageUrl)
+  const [tempImageUrl, setTempImageUrl] = useState<string | null>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
-  // Bloquear scroll del body Y del contenedor main - GUARDANDO LA POSICIÓN
+  // Bloquear scroll
   useEffect(() => {
     const scrollY = window.scrollY
     const scrollX = window.scrollX
@@ -73,11 +76,11 @@ export default function ImageViewer({
   // Cerrar con ESC
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showOptions) handleClose()
+      if (e.key === 'Escape' && !showOptions && !showCropModal) handleClose()
     }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
-  }, [showOptions])
+  }, [showOptions, showCropModal])
 
   const handleClose = () => {
     if (uploading) return
@@ -88,88 +91,25 @@ export default function ImageViewer({
     }, 220)
   }
 
-  const compressImage = async (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      
-      reader.onload = (e) => {
-        const img = new Image()
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
-          
-          if (!ctx) {
-            reject(new Error('No se pudo crear contexto de canvas'))
-            return
-          }
-
-          const SIZE = 800
-          canvas.width = SIZE
-          canvas.height = SIZE
-
-          let sourceX = 0
-          let sourceY = 0
-          let sourceSize = Math.min(img.width, img.height)
-
-          if (img.width > img.height) {
-            sourceX = (img.width - img.height) / 2
-          } else {
-            sourceY = (img.height - img.width) / 2
-          }
-
-          ctx.fillStyle = '#FFFFFF'
-          ctx.fillRect(0, 0, SIZE, SIZE)
-
-          ctx.drawImage(
-            img,
-            sourceX, sourceY, sourceSize, sourceSize,
-            0, 0, SIZE, SIZE
-          )
-
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                const compressedFile = new File([blob], 'product.webp', {
-                  type: 'image/webp',
-                  lastModified: Date.now(),
-                })
-                resolve(compressedFile)
-              } else {
-                reject(new Error('Error al comprimir imagen'))
-              }
-            },
-            'image/webp',
-            0.85
-          )
-        }
-
-        img.onerror = () => reject(new Error('Error al cargar imagen'))
-        img.src = e.target?.result as string
-      }
-
-      reader.onerror = () => reject(new Error('Error al leer archivo'))
-      reader.readAsDataURL(file)
-    })
-  }
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !productId) return
 
-    await processImage(file)
+    // Crear URL temporal para el crop
+    const tempUrl = URL.createObjectURL(file)
+    setTempImageUrl(tempUrl)
     setShowOptions(false)
+    setShowCropModal(true)
   }
 
-  const processImage = async (file: File) => {
+  const handleCropComplete = async (croppedBlob: Blob) => {
     setError(null)
     setUploading(true)
+    setShowCropModal(false)
 
     try {
-      const compressedFile = await compressImage(file)
-      
       const formData = new FormData()
-      formData.append('file', compressedFile)
+      formData.append('file', croppedBlob, 'product.webp')
 
       const uploadResult = await uploadProductImage(formData)
 
@@ -198,6 +138,10 @@ export default function ImageViewer({
       setError('Error al procesar imagen')
     } finally {
       setUploading(false)
+      if (tempImageUrl) {
+        URL.revokeObjectURL(tempImageUrl)
+        setTempImageUrl(null)
+      }
     }
   }
 
@@ -421,6 +365,21 @@ export default function ImageViewer({
         onChange={handleFileSelect}
         className="hidden"
       />
+
+      {/* MODAL DE CROP - ESTILO WHATSAPP */}
+      {showCropModal && tempImageUrl && (
+        <ImageCropModal
+          imageUrl={tempImageUrl}
+          onClose={() => {
+            setShowCropModal(false)
+            if (tempImageUrl) {
+              URL.revokeObjectURL(tempImageUrl)
+              setTempImageUrl(null)
+            }
+          }}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </>
   )
 }
