@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { addProduct, getProducts } from '@/app/actions/products'
 import { getCategories } from '@/app/actions/categories'
 import { deleteProductImage } from '@/app/actions/upload'
@@ -9,6 +9,7 @@ import { Category } from '@/types/category'
 import CategorySelector from './CategorySelector'
 import AddCategoryForm from './AddCategoryForm'
 import ImageUpload from '@/components/ui/ImageUpload'
+import ImageViewer from './ImageViewer'
 import { generateNextProductCode } from '@/lib/utils/product'
 import { PRODUCT_MESSAGES } from '@/constants/validation'
 
@@ -26,6 +27,9 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
   const [showCategoryForm, setShowCategoryForm] = useState(false)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [oldImageToDelete, setOldImageToDelete] = useState<string | null>(null)
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false)
+  const [originRect, setOriginRect] = useState<DOMRect | null>(null)
+  const imageRef = useRef<HTMLDivElement>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -337,11 +341,42 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
 
             {/* Imagen del Producto */}
             <div>
-              <ImageUpload
-                currentImageUrl={imageUrl}
-                onImageChange={setImageUrl}
-                onOldImageDelete={handleOldImageDelete}
-              />
+              {imageUrl ? (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-2 uppercase">
+                    Imagen del Producto
+                  </label>
+                  <div
+                    ref={imageRef}
+                    onClick={() => {
+                      if (imageRef.current) {
+                        setOriginRect(imageRef.current.getBoundingClientRect())
+                      }
+                      setIsImageViewerOpen(true)
+                    }}
+                    className="relative w-32 h-32 cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors"
+                  >
+                    <img
+                      src={imageUrl}
+                      alt="Vista previa del producto"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <div className="opacity-0 hover:opacity-100 transition-opacity">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <ImageUpload
+                  currentImageUrl={imageUrl}
+                  onImageChange={setImageUrl}
+                  onOldImageDelete={handleOldImageDelete}
+                />
+              )}
             </div>
 
             {/* Producto Activo */}
@@ -387,6 +422,20 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
           />
         )}
       </div>
+
+      {/* ImageViewer Modal */}
+      {isImageViewerOpen && imageUrl && (
+        <ImageViewer
+          imageUrl={imageUrl}
+          productName={formData.name || 'Nuevo Producto'}
+          onClose={() => setIsImageViewerOpen(false)}
+          onImageUpdate={(newUrl) => {
+            setImageUrl(newUrl)
+            setIsImageViewerOpen(false)
+          }}
+          originRect={originRect}
+        />
+      )}
     </div>
   )
 }

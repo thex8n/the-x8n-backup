@@ -490,8 +490,9 @@ export default function ImageViewer({
     
     const originX = originRect.left + originRect.width / 2
     const originY = originRect.top + originRect.height / 2
-    
-    const thumbnailSize = 80
+
+    // Usar el tamaño real del thumbnail del origen
+    const thumbnailSize = originRect.width || 80
     const finalScale = thumbnailSize / Math.min(windowWidth, windowHeight)
     
     if (isClosing) {
@@ -518,8 +519,9 @@ export default function ImageViewer({
     const centerY = windowHeight / 2
     const originX = originRect.left + originRect.width / 2
     const originY = originRect.top + originRect.height / 2
-    
-    const thumbnailSize = 80
+
+    // Usar el tamaño real del thumbnail del origen
+    const thumbnailSize = originRect.width || 80
     const initialScale = thumbnailSize / Math.min(windowWidth, windowHeight)
     
     return `translate(${originX - centerX}px, ${originY - centerY}px) scale(${initialScale})`
