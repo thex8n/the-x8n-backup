@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { uploadProductImage } from '@/app/actions/upload'
 import { Camera, Upload, X, Loader2, ImagePlus } from 'lucide-react'
+import ImageCropModal from '@/components/inventory/ImageCropModal'
 
 interface ImageUploadProps {
   currentImageUrl: string | null
@@ -18,6 +19,8 @@ export default function ImageUpload({
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showOptions, setShowOptions] = useState(false)
+  const [showCropModal, setShowCropModal] = useState(false)
+  const [tempImageUrl, setTempImageUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
@@ -25,20 +28,21 @@ export default function ImageUpload({
     const file = e.target.files?.[0]
     if (!file) return
 
-    await processImage(file)
+    // Crear URL temporal para el crop
+    const tempUrl = URL.createObjectURL(file)
+    setTempImageUrl(tempUrl)
     setShowOptions(false)
+    setShowCropModal(true)
   }
 
-  const processImage = async (file: File) => {
+  const handleCropComplete = async (croppedBlob: Blob) => {
     setError(null)
     setUploading(true)
+    setShowCropModal(false)
 
     try {
-      // Comprimir imagen antes de subir
-      const compressedFile = await compressImage(file)
-      
       const formData = new FormData()
-      formData.append('file', compressedFile)
+      formData.append('file', croppedBlob, 'product.webp')
 
       const result = await uploadProductImage(formData)
 
@@ -56,77 +60,11 @@ export default function ImageUpload({
       setError('Error al procesar imagen')
     } finally {
       setUploading(false)
-    }
-  }
-
-  const compressImage = async (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      
-      reader.onload = (e) => {
-        const img = new Image()
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
-          
-          if (!ctx) {
-            reject(new Error('No se pudo crear contexto de canvas'))
-            return
-          }
-
-          // Dimensiones fijas: 800x800
-          const SIZE = 800
-          canvas.width = SIZE
-          canvas.height = SIZE
-
-          // Calcular dimensiones para centrar la imagen
-          let sourceX = 0
-          let sourceY = 0
-          let sourceSize = Math.min(img.width, img.height)
-
-          if (img.width > img.height) {
-            sourceX = (img.width - img.height) / 2
-          } else {
-            sourceY = (img.height - img.width) / 2
-          }
-
-          // Fondo blanco
-          ctx.fillStyle = '#FFFFFF'
-          ctx.fillRect(0, 0, SIZE, SIZE)
-
-          // Dibujar imagen centrada y recortada
-          ctx.drawImage(
-            img,
-            sourceX, sourceY, sourceSize, sourceSize,
-            0, 0, SIZE, SIZE
-          )
-
-          // Convertir a WebP con calidad 0.85
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                const compressedFile = new File([blob], 'product.webp', {
-                  type: 'image/webp',
-                  lastModified: Date.now(),
-                })
-                resolve(compressedFile)
-              } else {
-                reject(new Error('Error al comprimir imagen'))
-              }
-            },
-            'image/webp',
-            0.85
-          )
-        }
-
-        img.onerror = () => reject(new Error('Error al cargar imagen'))
-        img.src = e.target?.result as string
+      if (tempImageUrl) {
+        URL.revokeObjectURL(tempImageUrl)
+        setTempImageUrl(null)
       }
-
-      reader.onerror = () => reject(new Error('Error al leer archivo'))
-      reader.readAsDataURL(file)
-    })
+    }
   }
 
   const handleRemoveImage = () => {
@@ -362,6 +300,21 @@ export default function ImageUpload({
           animation: slideUp 0.3s ease-out;
         }
       `}</style>
+
+      {/* MODAL DE CROP - ESTILO WHATSAPP */}
+      {showCropModal && tempImageUrl && (
+        <ImageCropModal
+          imageUrl={tempImageUrl}
+          onClose={() => {
+            setShowCropModal(false)
+            if (tempImageUrl) {
+              URL.revokeObjectURL(tempImageUrl)
+              setTempImageUrl(null)
+            }
+          }}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   )
 } 

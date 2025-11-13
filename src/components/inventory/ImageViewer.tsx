@@ -4,7 +4,7 @@ import { X, Pencil, Camera, ImagePlus, Loader2, CheckCircle } from 'lucide-react
 import { useEffect, useState, useRef } from 'react'
 import { uploadProductImage } from '@/app/actions/upload'
 import { updateProductImage } from '@/app/actions/products'
-import ImageCropModal from './ImageCropModal'
+import ImageCropModal from '@/components/inventory/ImageCropModal'
 
 interface ImageViewerProps {
   imageUrl: string
