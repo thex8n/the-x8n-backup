@@ -13,15 +13,17 @@ interface ImageViewerProps {
   onClose: () => void
   onImageUpdate?: (newImageUrl: string) => void
   originRect?: DOMRect | null
+  getUpdatedRect?: () => DOMRect | null
 }
 
-export default function ImageViewer({ 
-  imageUrl, 
-  productName, 
+export default function ImageViewer({
+  imageUrl,
+  productName,
   productId,
-  onClose, 
+  onClose,
   onImageUpdate,
-  originRect 
+  originRect,
+  getUpdatedRect
 }: ImageViewerProps) {
   const [isClosing, setIsClosing] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -32,6 +34,7 @@ export default function ImageViewer({
   const [currentImage, setCurrentImage] = useState(imageUrl)
   const [tempImageUrl, setTempImageUrl] = useState<string | null>(null)
   const [hasOpenedOnce, setHasOpenedOnce] = useState(false)
+  const [closingRect, setClosingRect] = useState<DOMRect | null>(null)
 
   // Estados para zoom y pan
   const [scale, setScale] = useState(1)
@@ -39,7 +42,6 @@ export default function ImageViewer({
   const [isPanning, setIsPanning] = useState(false)
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null)
-  const [isResetting, setIsResetting] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -134,15 +136,24 @@ export default function ImageViewer({
 
   const handleClose = () => {
     if (uploading) return
-    
-    // Resetear zoom antes de cerrar para la animación (exactamente 1 para activar animación)
-    setScale(1)
-    setPosition({ x: 0, y: 0 })
-    
-    setIsClosing(true)
+
+    // Capturar el rect actualizado justo antes de cerrar
+    const updatedRect = getUpdatedRect ? getUpdatedRect() : null
+    if (updatedRect) {
+      setClosingRect(updatedRect)
+    }
+
+    // Usar requestAnimationFrame para asegurar que el reset y el cierre ocurran en el mismo frame
+    requestAnimationFrame(() => {
+      // Resetear zoom antes de cerrar para la animación (exactamente 1 para activar animación)
+      setScale(1)
+      setPosition({ x: 0, y: 0 })
+      setIsClosing(true)
+    })
+
     setTimeout(() => {
       onClose()
-    }, 220)
+    }, 250)
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,45 +181,52 @@ export default function ImageViewer({
       const uploadResult = await uploadProductImage(formData)
 
       if (uploadResult.success && uploadResult.url) {
+        // ✅ Actualizar la imagen PRIMERO, antes de quitar el spinner
+        setCurrentImage(uploadResult.url)
+
         // Si NO hay productId, solo actualizar localmente (para formulario de agregar)
         if (!productId) {
-          setCurrentImage(uploadResult.url)
+          setUploading(false) // Quitar spinner después de actualizar imagen
           setUpdated(true)
 
           if (onImageUpdate) {
             onImageUpdate(uploadResult.url)
           }
 
+          // Ocultar mensaje de éxito después de 2 segundos
           setTimeout(() => {
-            handleClose()
-          }, 1500)
+            setUpdated(false)
+          }, 2000)
         } else {
           // Si hay productId, actualizar en la base de datos (producto existente)
           const updateResult = await updateProductImage(productId, uploadResult.url)
 
           if (updateResult.success) {
-            setCurrentImage(uploadResult.url)
+            setUploading(false) // Quitar spinner después de actualizar imagen
             setUpdated(true)
 
             if (onImageUpdate) {
               onImageUpdate(uploadResult.url)
             }
 
+            // Ocultar mensaje de éxito después de 2 segundos
             setTimeout(() => {
-              handleClose()
-            }, 1500)
+              setUpdated(false)
+            }, 2000)
           } else {
             setError(updateResult.error || 'Error al actualizar producto')
+            setUploading(false)
           }
         }
       } else {
         setError(uploadResult.error || 'Error al subir imagen')
+        setUploading(false)
       }
     } catch (err) {
       console.error('Error processing image:', err)
       setError('Error al procesar imagen')
-    } finally {
       setUploading(false)
+    } finally {
       if (tempImageUrl) {
         URL.revokeObjectURL(tempImageUrl)
         setTempImageUrl(null)
@@ -468,8 +486,7 @@ export default function ImageViewer({
           
           const targetScale = 2.5
           const factor = (targetScale - 1)
-          
-          setIsResetting(false)
+
           setScale(targetScale)
           
           const newPosition = {
@@ -479,8 +496,6 @@ export default function ImageViewer({
           setPosition(applyPanLimits(newPosition))
         }
       } else {
-        // Activar animación sutil para el reset
-        setIsResetting(false)
         // Quitar zoom con un valor ligeramente diferente de 1 para evitar animación de entrada
         setScale(1.0000001)
         setPosition({ x: 0, y: 0 })
@@ -501,21 +516,21 @@ export default function ImageViewer({
 
     const windowWidth = window.innerWidth
     const windowHeight = window.innerHeight
-    
+
     const centerX = windowWidth / 2
     const centerY = windowHeight / 2
-    
-    const originX = originRect.left + originRect.width / 2
-    const originY = originRect.top + originRect.height / 2
 
-    // Usar el tamaño real del thumbnail del origen
-    const thumbnailSize = originRect.width || 80
-    const finalScale = thumbnailSize / Math.min(windowWidth, windowHeight)
-    
     if (isClosing) {
+      // Usar closingRect si está disponible, sino usar originRect
+      const targetRect = closingRect || originRect
+      const targetX = targetRect.left + targetRect.width / 2
+      const targetY = targetRect.top + targetRect.height / 2
+      const targetSize = targetRect.width || 80
+      const targetScale = targetSize / Math.min(windowWidth, windowHeight)
+
       return {
-        transform: `translate(${originX - centerX}px, ${originY - centerY}px) scale(${finalScale})`,
-        transition: 'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease-out',
+        transform: `translate(${targetX - centerX}px, ${targetY - centerY}px) scale(${targetScale})`,
+        transition: 'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         opacity: 1
       }
     }
@@ -604,7 +619,7 @@ export default function ImageViewer({
             handleClose()
           }}
           disabled={uploading}
-          className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-full transition-colors"
           aria-label="Volver"
         >
           <ArrowLeft className="w-6 h-6 text-white" strokeWidth={2.5} />
@@ -618,16 +633,10 @@ export default function ImageViewer({
             setShowOptions(true)
           }}
           disabled={uploading || updated}
-          className="md:hidden p-4 hover:bg-white/10 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="md:hidden p-4 hover:bg-white/10 rounded-full transition-all"
           aria-label="Editar imagen"
         >
-          {uploading ? (
-            <Loader2 className="w-6 h-6 text-white animate-spin" />
-          ) : updated ? (
-            <CheckCircle className="w-6 h-6 text-green-400" />
-          ) : (
-            <Pencil className="w-6 h-6 text-white" />
-          )}
+          <Pencil className="w-6 h-6 text-white" />
         </button>
       </div>
 
@@ -646,7 +655,9 @@ export default function ImageViewer({
           className="relative max-w-4xl max-h-full overflow-hidden"
           style={{
             ...getImageStyle(),
-            touchAction: 'none'
+            touchAction: 'none',
+            minHeight: uploading ? '400px' : 'auto',
+            minWidth: uploading ? '400px' : 'auto'
           }}
           onClick={(e) => {
             e.stopPropagation()
@@ -662,19 +673,33 @@ export default function ImageViewer({
           onTouchEnd={handleTouchEnd}
         >
 
-          <img
-            src={currentImage}
-            alt={productName}
-            className="w-full h-auto object-contain rounded-lg pointer-events-none select-none"
-            style={{
-              maxHeight: 'calc(100vh - 8rem)',
-              transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
-              transition: isPanning ? 'none' : 'transform 0.2s ease-out',
-              cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
-            }}
-            draggable={false}
-          />
+          {/* Mostrar imagen solo si NO está subiendo */}
+          {!uploading && (
+            <img
+              src={currentImage}
+              alt={productName}
+              className="w-full h-auto object-contain rounded-lg pointer-events-none select-none"
+              style={{
+                maxHeight: 'calc(100vh - 8rem)',
+                transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+                transition: isPanning ? 'none' : 'transform 0.2s ease-out',
+                cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
+              }}
+              draggable={false}
+            />
+          )}
 
+          {/* Spinner mientras sube */}
+          {uploading && (
+            <div className="flex items-center justify-center w-full h-full min-h-[400px]">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-12 h-12 text-white animate-spin" />
+                <span className="text-white text-sm font-medium">Subiendo imagen...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Checkmark cuando termina de subir */}
           {updated && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />

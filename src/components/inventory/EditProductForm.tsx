@@ -25,6 +25,7 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
   const [imageUrl, setImageUrl] = useState<string | null>(product.image_url)
   const [oldImageToDelete, setOldImageToDelete] = useState<string | null>(null)
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false)
+  const [imageOriginRect, setImageOriginRect] = useState<DOMRect | null>(null)
   const imageRef = useRef<HTMLDivElement>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
@@ -60,6 +61,14 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
   const handleOldImageDelete = (oldUrl: string) => {
     console.log('📌 Marcando imagen para eliminar al confirmar:', oldUrl)
     setOldImageToDelete(oldUrl)
+  }
+
+  const handleImageClick = () => {
+    const imgElement = imageRef.current
+    const rect = imgElement?.getBoundingClientRect() || null
+
+    setImageOriginRect(rect)
+    setIsImageViewerOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,12 +136,12 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
 
   return (
     <div
-      className={`fixed inset-0 bg-black/30 flex items-start justify-center ${isImageViewerOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}
+      className="fixed inset-0 bg-black/30 flex items-start justify-center overflow-y-auto"
       style={{ zIndex: 70 }}
       onClick={handleCancel}
     >
       <div
-        className={`bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-3xl md:max-h-[85vh] ${isImageViewerOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        className="bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-3xl md:max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pb-32 md:p-6 md:pb-6">
@@ -317,7 +326,7 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
                   </label>
                   <div
                     ref={imageRef}
-                    onClick={() => setIsImageViewerOpen(true)}
+                    onClick={handleImageClick}
                     className="relative w-32 h-32 cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors"
                   >
                     <img
@@ -387,17 +396,21 @@ export default function EditProductForm({ product, onClose, onSuccess }: EditPro
         )}
       </div>
 
-      {isImageViewerOpen && imageUrl && imageRef.current && (
+      {isImageViewerOpen && imageUrl && (
         <ImageViewer
           imageUrl={imageUrl}
           productName={formData.name || 'Producto'}
           productId={product.id}
-          onClose={() => setIsImageViewerOpen(false)}
+          onClose={() => {
+            setIsImageViewerOpen(false)
+            setImageOriginRect(null)
+          }}
           onImageUpdate={(newUrl) => {
             setImageUrl(newUrl)
             // No cerrar aquí - el ImageViewer se cierra solo después del checkmark.
           }}
-          originRect={imageRef.current.getBoundingClientRect()}
+          originRect={imageOriginRect}
+          getUpdatedRect={() => imageRef.current?.getBoundingClientRect() || null}
         />
       )}
     </div>

@@ -27,8 +27,9 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
 
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
+  const previousRotationRef = useRef<number>(0)
 
-  // Cargar dimensiones de la imagen
+  // Cargar dimensiones de la imagen y recalcular al rotar
   useEffect(() => {
     const img = new Image()
     img.src = imageUrl
@@ -39,31 +40,38 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
       const containerWidth = container.clientWidth
       const containerHeight = container.clientHeight
 
-      const naturalWidth = img.naturalWidth
-      const naturalHeight = img.naturalHeight
+      let naturalWidth = img.naturalWidth
+      let naturalHeight = img.naturalHeight
+
+      // 🔧 Intercambiar dimensiones si la imagen está rotada 90° o 270°
+      const normalizedRotation = rotation % 360
+      if (normalizedRotation === 90 || normalizedRotation === 270) {
+        [naturalWidth, naturalHeight] = [naturalHeight, naturalWidth]
+      }
 
       // Calcular dimensiones para que la imagen quepa en el contenedor
-      // Usamos contain para asegurar que siempre quepa completamente
       let displayWidth = naturalWidth
       let displayHeight = naturalHeight
 
       const widthRatio = containerWidth / displayWidth
       const heightRatio = containerHeight / displayHeight
-      const ratio = Math.min(widthRatio, heightRatio) * 0.95 // 95% del contenedor para usar más espacio
+
+      // Usar 99% para maximizar el espacio sin que se salga
+      const ratio = Math.min(widthRatio, heightRatio) * 0.99
 
       displayWidth = displayWidth * ratio
       displayHeight = displayHeight * ratio
 
       setImageDimensions({ width: displayWidth, height: displayHeight })
 
-      // Área de crop inicial - ocupa 100% de la imagen (completamente grande)
-      const initialCropSize = Math.min(displayWidth, displayHeight)
+      // Área de crop inicial - centrada y del tamaño adecuado
+      const initialCropSize = Math.min(displayWidth, displayHeight) * 0.95
 
       // Calcular la posición de la imagen en el contenedor
       const imgLeft = (containerWidth - displayWidth) / 2
       const imgTop = (containerHeight - displayHeight) / 2
 
-      // Centrar la cuadrícula dentro de la imagen
+      // Centrar la cuadrícula dentro de la imagen con margen de seguridad
       const cropX = imgLeft + (displayWidth - initialCropSize) / 2
       const cropY = imgTop + (displayHeight - initialCropSize) / 2
 
@@ -74,9 +82,75 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
         height: initialCropSize
       })
     }
-  }, [imageUrl])
+  }, [imageUrl, rotation])
+
+  // 🔧 Ajustar crop area cuando cambia la rotación SOLO si se sale de límites
+  useEffect(() => {
+    if (!containerRef.current || imageDimensions.width === 0) return
+
+    // Verificar si las dimensiones efectivas realmente cambiaron
+    const prevNormalized = previousRotationRef.current % 360
+    const currNormalized = rotation % 360
+    const prevIsRotated = prevNormalized === 90 || prevNormalized === 270
+    const currIsRotated = currNormalized === 90 || currNormalized === 270
+
+    // Solo ajustar si hay un cambio real en las dimensiones efectivas
+    if (prevIsRotated === currIsRotated) {
+      previousRotationRef.current = rotation
+      return
+    }
+
+    previousRotationRef.current = rotation
+
+    const containerWidth = containerRef.current.clientWidth
+    const containerHeight = containerRef.current.clientHeight
+
+    // Calcular nueva posición de la imagen
+    const imgLeft = (containerWidth - scaledWidth) / 2
+    const imgTop = (containerHeight - scaledHeight) / 2
+    const imgRight = imgLeft + scaledWidth
+    const imgBottom = imgTop + scaledHeight
+
+    // Solo ajustar si el crop area actual se sale de los límites
+    setCropArea(prev => {
+      const isOutOfBounds =
+        prev.x < imgLeft ||
+        prev.y < imgTop ||
+        prev.x + prev.width > imgRight ||
+        prev.y + prev.height > imgBottom
+
+      // Si no se sale de los límites, no hacer nada
+      if (!isOutOfBounds) {
+        return prev
+      }
+
+      // Si se sale, ajustar para que quepa
+      let newX = Math.max(imgLeft, Math.min(prev.x, imgRight - prev.width))
+      let newY = Math.max(imgTop, Math.min(prev.y, imgBottom - prev.height))
+      let newWidth = prev.width
+      let newHeight = prev.height
+
+      // Si el tamaño es muy grande, reducirlo
+      if (newWidth > scaledWidth || newHeight > scaledHeight) {
+        const size = Math.min(prev.width, prev.height, scaledWidth, scaledHeight)
+        newWidth = size
+        newHeight = size
+        // Recentrar
+        newX = imgLeft + (scaledWidth - size) / 2
+        newY = imgTop + (scaledHeight - size) / 2
+      }
+
+      return {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight
+      }
+    })
+  }, [rotation, imageDimensions])
 
   // Sin zoom, la imagen se renderiza a tamaño completo
+  // Las dimensiones ya están ajustadas según la rotación en el useEffect principal
   const scaledWidth = imageDimensions.width
   const scaledHeight = imageDimensions.height
 
@@ -348,7 +422,7 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
   }
 
   const handleRotate = () => {
-    setRotation((prev) => (prev + 90) % 360)
+    setRotation((prev) => prev + 90)
   }
 
   return (

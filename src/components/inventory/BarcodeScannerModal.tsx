@@ -3,6 +3,7 @@
 import { X, ScrollText, ClipboardClock } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { ImagePlus } from 'lucide-react'
+import ImageViewer from './ImageViewer'
 
 interface BarcodeScannerModalProps {
   onClose: () => void
@@ -51,6 +52,17 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   const [scanSuccess, setScanSuccess] = useState(false)
   const [scannedProductIds, setScannedProductIds] = useState<Set<string>>(new Set())
   const [newProductBarcodes, setNewProductBarcodes] = useState<Set<string>>(new Set())
+
+  // 🖼️ Estados para ImageViewer
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false)
+  const [viewingImage, setViewingImage] = useState<{
+    url: string
+    name: string
+    productId: string
+    originRect: DOMRect | null
+  } | null>(null)
+  const imageRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
   const html5QrCodeRef = useRef<any>(null)
   const isProcessingRef = useRef<boolean>(false)
   const lastScanTimeRef = useRef<number>(0)
@@ -425,6 +437,35 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
     }
   }
 
+  // 🖼️ Función para abrir el visor de imagen
+  const handleImageClick = (productId: string, imageUrl: string, productName: string) => {
+    const imgElement = imageRefs.current[productId]
+    const rect = imgElement?.getBoundingClientRect() || null
+
+    // 🔒 Bloquear la cámara al abrir el ImageViewer
+    setIsManuallyLocked(true)
+
+    setViewingImage({
+      url: imageUrl,
+      name: productName,
+      productId: productId,
+      originRect: rect
+    })
+    setIsImageViewerOpen(true)
+  }
+
+  // 🖼️ Función para actualizar la imagen de un producto
+  const handleImageUpdate = (productId: string, newImageUrl: string) => {
+    setGroupedProducts(prev => {
+      const newMap = new Map(prev)
+      const product = newMap.get(productId)
+      if (product) {
+        newMap.set(productId, { ...product, imageUrl: newImageUrl })
+      }
+      return newMap
+    })
+  }
+
   // 🆕 Convertir Map a Array para renderizar (ordenado por último escaneo)
   const groupedProductsArray = Array.from(groupedProducts.values()).sort(
     (a, b) => b.lastTimestamp.getTime() - a.lastTimestamp.getTime()
@@ -464,7 +505,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       </button>
 
       {showConfirmClose && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4"
           onClick={() => {
             setShowConfirmClose(false)
@@ -624,10 +665,22 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
                   >
                     <div className="flex items-start gap-3">
                       {/* Imagen del producto */}
-                      <div className="shrink-0 w-16 h-16 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+                      <div
+                        ref={(el) => {
+                          imageRefs.current[item.id] = el
+                        }}
+                        onClick={() => {
+                          if (item.imageUrl) {
+                            handleImageClick(item.id, item.imageUrl, item.name)
+                          }
+                        }}
+                        className={`shrink-0 w-16 h-16 bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center overflow-hidden ${
+                          item.imageUrl ? 'cursor-pointer hover:border-blue-400 transition-colors' : ''
+                        }`}
+                      >
                         {item.imageUrl ? (
-                          <img 
-                            src={item.imageUrl} 
+                          <img
+                            src={item.imageUrl}
                             alt={item.name}
                             className="w-full h-full object-cover"
                           />
@@ -675,6 +728,24 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
           </div>
         </div>
       </div>
+
+      {/* 🖼️ ImageViewer Modal */}
+      {isImageViewerOpen && viewingImage && (
+        <ImageViewer
+          imageUrl={viewingImage.url}
+          productName={viewingImage.name}
+          productId={viewingImage.productId}
+          originRect={viewingImage.originRect}
+          onClose={() => {
+            setIsImageViewerOpen(false)
+            setViewingImage(null)
+            // 🔓 Desbloquear la cámara al cerrar el ImageViewer
+            setIsManuallyLocked(false)
+          }}
+          onImageUpdate={(newUrl) => handleImageUpdate(viewingImage.productId, newUrl)}
+          getUpdatedRect={() => imageRefs.current[viewingImage.productId]?.getBoundingClientRect() || null}
+        />
+      )}
     </div>
   )
 }
