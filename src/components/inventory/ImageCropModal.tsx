@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { RotateCw } from 'lucide-react'
+import { PiCameraRotate } from "react-icons/pi";
 
 interface ImageCropModalProps {
   imageUrl: string
@@ -624,6 +624,7 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
               }}
               disabled={uploading}
               className="text-white text-[17px] font-normal disabled:opacity-50 min-w-[90px] text-left"
+              style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}
             >
               Cancelar
             </button>
@@ -638,7 +639,7 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
               aria-label="Rotar 90°"
             >
               <div className="w-12 h-12 flex items-center justify-center">
-                <RotateCw className="w-7 h-7 text-white" strokeWidth={2.5} />
+                <PiCameraRotate className="w-7 h-7 text-white" strokeWidth={2.5} />
               </div>
             </button>
 
@@ -649,6 +650,7 @@ export default function ImageCropModal({ imageUrl, onClose, onCropComplete }: Im
               }}
               disabled={uploading}
               className="text-white text-[17px] font-normal disabled:opacity-50 min-w-[90px] text-right"
+              style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}
             >
               {uploading ? 'Subiendo...' : 'OK'}
             </button>

@@ -1,10 +1,16 @@
 'use client'
 
-import { ArrowLeft, Pencil, Camera, ImagePlus, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { uploadProductImage } from '@/app/actions/upload'
 import { updateProductImage } from '@/app/actions/products'
 import ImageCropModal from '@/components/inventory/ImageCropModal'
+import { IoMdArrowRoundBack } from "react-icons/io"
+import { FaPencilAlt } from "react-icons/fa"
+import { FaRegTrashCan } from "react-icons/fa6"
+import { LuImagePlus } from "react-icons/lu"
+import { GrGallery } from "react-icons/gr"
+import { PiCameraBold } from "react-icons/pi"
 
 interface ImageViewerProps {
   imageUrl: string
@@ -28,6 +34,7 @@ export default function ImageViewer({
   const [isClosing, setIsClosing] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
   const [showCropModal, setShowCropModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentImage, setCurrentImage] = useState(imageUrl)
@@ -49,6 +56,9 @@ export default function ImageViewer({
   const accumulatedDeltaRef = useRef(0)
   const wheelAnimationFrameRef = useRef<number | null>(null)
   const isMountedRef = useRef(true)
+
+  // Detectar si hay imagen
+  const hasImage = currentImage && currentImage.trim() !== ''
 
   useEffect(() => {
     isMountedRef.current = true
@@ -129,11 +139,11 @@ export default function ImageViewer({
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showOptions && !showCropModal) handleClose()
+      if (e.key === 'Escape' && !showOptions && !showCropModal && !showDeleteModal) handleClose()
     }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
-  }, [showOptions, showCropModal])
+  }, [showOptions, showCropModal, showDeleteModal])
 
   const handleClose = () => {
     if (uploading) return
@@ -253,6 +263,35 @@ export default function ImageViewer({
 
   const handleChooseFromGallery = () => {
     fileInputRef.current?.click()
+  }
+
+  const handleDeleteImage = async () => {
+    if (!productId) return
+
+    setShowDeleteModal(false)
+    setUploading(true)
+
+    try {
+      // Actualizar producto con imagen null o URL por defecto
+      const result = await updateProductImage(productId, '')
+
+      if (result.success) {
+        // Notificar al componente padre
+        if (onImageUpdate) {
+          onImageUpdate('')
+        }
+
+        // Cerrar el viewer
+        handleClose()
+      } else {
+        setError(result.error || 'Error al eliminar imagen')
+      }
+    } catch (err) {
+      console.error('Error deleting image:', err)
+      setError('Error al eliminar imagen')
+    } finally {
+      setUploading(false)
+    }
   }
 
   useEffect(() => {
@@ -496,6 +535,9 @@ export default function ImageViewer({
   }
 
   const getImageStyle = () => {
+    // Sin animación si no hay imagen
+    if (!hasImage) return {}
+
     if (scale > 1.001 || scale < 0.999) return {}
     if (hasOpenedOnce && !isClosing) return {}
     if (!originRect) return {}
@@ -519,7 +561,7 @@ export default function ImageViewer({
         opacity: 1
       }
     }
-    
+
     return {
       transform: 'translate(0, 0) scale(1)',
       transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -589,7 +631,7 @@ export default function ImageViewer({
       />
 
       <div
-        className="fixed top-4 left-4 right-4 z-112 flex items-center justify-between"
+        className="fixed top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-112 flex items-center justify-between"
         style={{
           opacity: isClosing ? 0 : 1,
           transition: 'opacity 0.15s ease-out'
@@ -601,24 +643,52 @@ export default function ImageViewer({
             handleClose()
           }}
           disabled={uploading}
-          className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-full transition-colors"
+          className="flex items-center gap-2 p-2 rounded-full"
           aria-label="Volver"
         >
-          <ArrowLeft className="w-6 h-6 text-white" strokeWidth={2.5} />
-          <span className="text-white font-medium text-sm">Imagen del producto</span>
+          <IoMdArrowRoundBack className="w-6 h-6 text-white" strokeWidth={2.5} />
+          <span className="text-white font-medium text-sm" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Imagen del producto</span>
         </button>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            setShowOptions(true)
-          }}
-          disabled={uploading}
-          className="md:hidden p-4 hover:bg-white/10 rounded-full transition-all"
-          aria-label="Editar imagen"
-        >
-          <Pencil className="w-6 h-6 text-white" />
-        </button>
+        {hasImage ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowDeleteModal(true)
+              }}
+              disabled={uploading}
+              className="md:hidden p-3 sm:p-4 rounded-full"
+              aria-label="Eliminar imagen"
+            >
+              <FaRegTrashCan className="w-6 h-6 text-white" />
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowOptions(true)
+              }}
+              disabled={uploading}
+              className="md:hidden p-3 sm:p-4 rounded-full"
+              aria-label="Editar imagen"
+            >
+              <FaPencilAlt className="w-6 h-6 text-white" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowOptions(true)
+            }}
+            disabled={uploading}
+            className="md:hidden p-3 sm:p-4 rounded-full"
+            aria-label="Agregar imagen"
+          >
+            <LuImagePlus className="w-6 h-6 text-white" />
+          </button>
+        )}
       </div>
 
       <div
@@ -638,20 +708,26 @@ export default function ImageViewer({
             touchAction: 'none'
           }}
           onClick={(e) => {
-            e.stopPropagation()
-            handleDoubleTap(e)
+            if (hasImage) {
+              e.stopPropagation()
+              handleDoubleTap(e)
+            } else {
+              // Si no hay imagen, permitir cerrar al hacer clic en el contenido
+              e.stopPropagation()
+              handleClose()
+            }
           }}
-          onWheel={handleWheel}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          onWheel={hasImage ? handleWheel : undefined}
+          onMouseDown={hasImage ? handleMouseDown : undefined}
+          onMouseMove={hasImage ? handleMouseMove : undefined}
+          onMouseUp={hasImage ? handleMouseUp : undefined}
+          onMouseLeave={hasImage ? handleMouseUp : undefined}
+          onTouchStart={hasImage ? handleTouchStart : undefined}
+          onTouchMove={hasImage ? handleTouchMove : undefined}
+          onTouchEnd={hasImage ? handleTouchEnd : undefined}
         >
 
-          {!uploading && (
+          {!uploading && hasImage && (
             <img
               key={currentImage}
               src={currentImage}
@@ -665,6 +741,20 @@ export default function ImageViewer({
               }}
               draggable={false}
             />
+          )}
+
+          {!uploading && !hasImage && (
+            <div
+              className="flex items-center justify-center w-full h-full min-h-[400px]"
+              style={{
+                opacity: isClosing ? 0 : 1,
+                transition: 'opacity 0.15s ease-out'
+              }}
+            >
+              <p className="text-white text-lg px-4 text-center" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>
+                No hay imagen del producto
+              </p>
+            </div>
           )}
 
           {uploading && (
@@ -706,10 +796,10 @@ export default function ImageViewer({
                   }}
                   className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <Camera className="w-6 h-6 text-gray-700" />
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{ border: '2.5px solid black', boxShadow: '0 0 8px rgba(0, 0, 0, 0.35)' }}>
+                    <PiCameraBold className="w-7 h-7 text-gray-700" />
                   </div>
-                  <span className="text-xs text-gray-600 font-medium">Foto</span>
+                  <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Foto</span>
                 </button>
 
                 <button
@@ -720,10 +810,16 @@ export default function ImageViewer({
                   }}
                   className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <ImagePlus className="w-6 h-6 text-gray-700" />
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{
+                    border: '3px solid transparent',
+                    backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #ff0000, #ff1a00, #ff3300, #ff4d00, #ff6600, #ff8000, #ff9900, #ffb300, #ffcc00, #ffe600, #ffff00, #e6ff00, #ccff00, #b3ff00, #99ff00, #80ff00, #66ff00, #4dff00, #33ff00, #1aff00, #00ff00, #00ff1a, #00ff33, #00ff4d, #00ff66, #00ff80, #00ff99, #00ffb3, #00ffcc, #00ffe6, #00ffff, #00e6ff, #00ccff, #00b3ff, #0099ff, #0080ff, #0066ff, #004dff, #0033ff, #001aff, #0000ff, #1a00ff, #3300ff, #4d00ff, #6600ff, #8000ff, #9900ff, #b300ff, #cc00ff, #e600ff, #ff00ff, #ff00e6, #ff00cc, #ff00b3, #ff0099, #ff0080, #ff0066, #ff004d, #ff0033, #ff001a, #ff0000)',
+                    backgroundOrigin: 'border-box',
+                    backgroundClip: 'padding-box, border-box',
+                    boxShadow: '0 0 8px rgba(0, 0, 0, 0.15)'
+                  }}>
+                    <GrGallery className="w-7 h-7 text-gray-700" />
                   </div>
-                  <span className="text-xs text-gray-600 font-medium">Galería</span>
+                  <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Galería</span>
                 </button>
               </div>
             </div>
@@ -762,6 +858,47 @@ export default function ImageViewer({
           }}
           onCropComplete={handleCropComplete}
         />
+      )}
+
+      {showDeleteModal && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-120"
+            onClick={() => setShowDeleteModal(false)}
+          />
+
+          <div className="fixed inset-0 z-121 flex items-center justify-center p-4" onClick={() => setShowDeleteModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  ¿Eliminar imagen?
+                </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Esta acción eliminará la imagen del producto. ¿Deseas continuar?
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={uploading}
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium disabled:opacity-50"
+                    style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteImage}
+                    disabled={uploading}
+                    className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-medium disabled:opacity-50"
+                    style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </>
   )

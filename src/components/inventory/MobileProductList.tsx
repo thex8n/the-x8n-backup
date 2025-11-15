@@ -153,15 +153,13 @@ export default function MobileProductList({ products, onProductDeleted, onProduc
                 <>
                   <div className="flex p-3 gap-3 pb-1">
                     <div className="shrink-0">
-                      <div 
+                      <div
                         ref={(el) => {
                           imageRefs.current[product.id] = el
                         }}
                         className="w-20 h-20 bg-gray-100 rounded-xl border-2 border-gray-200 flex items-center justify-center overflow-hidden cursor-pointer active:scale-95 transition-transform"
                         onClick={() => {
-                          if (displayImageUrl) {
-                            handleImageClick(product.id, displayImageUrl, product.name)
-                          }
+                          handleImageClick(product.id, displayImageUrl || '', product.name)
                         }}
                       >
                         {displayImageUrl ? (
