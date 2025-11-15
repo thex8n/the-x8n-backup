@@ -166,7 +166,6 @@ export default function ImageViewer({
     setShowCropModal(true)
   }
 
-  // ✅ SOLUCIÓN APLICADA AQUÍ
   const handleCropComplete = async (croppedBlob: Blob) => {
     setError(null)
     setShowCropModal(false)
@@ -178,7 +177,6 @@ export default function ImageViewer({
       if (isMountedRef.current) {
         setCurrentImage(localUrl)
         setUploading(false)
-        // ⚠️ NO actualizar lista con blob: URL
       }
     }, 1000)
 
@@ -189,7 +187,7 @@ export default function ImageViewer({
       const uploadResult = await uploadProductImage(formData)
 
       if (uploadResult.success && uploadResult.url) {
-        // ✅ SOLUCIÓN 1: Cache-busting con timestamp
+        // ✅ SOLUCIÓN: Cache-busting con timestamp
         const cacheBustedUrl = uploadResult.url + '?t=' + Date.now()
 
         if (isMountedRef.current) {
@@ -201,7 +199,7 @@ export default function ImageViewer({
           }
         }
 
-        // 🗑️ SOLUCIÓN 4: Revocar blob: DESPUÉS con delay
+        // 🗑️ Revocar blob: DESPUÉS con delay
         setTimeout(() => {
           URL.revokeObjectURL(localUrl)
         }, 100)
@@ -651,6 +649,7 @@ export default function ImageViewer({
 
           {!uploading && (
             <img
+              key={currentImage}
               src={currentImage}
               alt={productName}
               className="w-full h-auto object-contain rounded-lg pointer-events-none select-none"
