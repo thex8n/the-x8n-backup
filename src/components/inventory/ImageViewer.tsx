@@ -656,7 +656,7 @@ export default function ImageViewer({
         }
 
         .animate-fadeInUp-delayed {
-          animation: fadeInUp 0.4s ease-out 0.1s both;
+          animation: fadeInUp 0.4s ease-out 0.08s both;
         }
       `}</style>
 
