@@ -170,7 +170,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
       onClick={handleCancel}
     >
       <div
-        className="bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-3xl md:max-h-[85vh] overflow-y-auto"
+        className="bg-white w-full min-h-full md:min-h-0 md:my-8 md:rounded-lg md:shadow-xl md:max-w-3xl md:max-h-[85vh] overflow-y-auto scrollbar-hide"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pb-32 md:p-6 md:pb-6">

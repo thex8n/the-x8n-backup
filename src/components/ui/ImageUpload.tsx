@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import { uploadProductImage } from '@/app/actions/upload'
 import { Camera, Upload, X, Loader2, ImagePlus } from 'lucide-react'
+import { PiCameraBold } from "react-icons/pi"
+import { GrGallery } from "react-icons/gr"
 import ImageCropModal from '@/components/inventory/ImageCropModal'
 
 interface ImageUploadProps {
@@ -160,23 +162,28 @@ export default function ImageUpload({
                     <button
                       type="button"
                       onClick={handleTakePhoto}
-                      className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
+                      className="flex flex-col items-center gap-2 py-3 rounded-xl"
                     >
-                      <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                        <Camera className="w-6 h-6 text-gray-700" />
+                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{ border: '2.5px solid black' }}>
+                        <PiCameraBold className="w-7 h-7 text-gray-700" />
                       </div>
-                      <span className="text-xs text-gray-600 font-medium">Foto</span>
+                      <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Foto</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={handleChooseFromGallery}
-                      className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
+                      className="flex flex-col items-center gap-2 py-3 rounded-xl"
                     >
-                      <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                        <ImagePlus className="w-6 h-6 text-gray-700" />
+                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{
+                        border: '3px solid transparent',
+                        backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #ff0000, #ff1a00, #ff3300, #ff4d00, #ff6600, #ff8000, #ff9900, #ffb300, #ffcc00, #ffe600, #ffff00, #e6ff00, #ccff00, #b3ff00, #99ff00, #80ff00, #66ff00, #4dff00, #33ff00, #1aff00, #00ff00, #00ff1a, #00ff33, #00ff4d, #00ff66, #00ff80, #00ff99, #00ffb3, #00ffcc, #00ffe6, #00ffff, #00e6ff, #00ccff, #00b3ff, #0099ff, #0080ff, #0066ff, #004dff, #0033ff, #001aff, #0000ff, #1a00ff, #3300ff, #4d00ff, #6600ff, #8000ff, #9900ff, #b300ff, #cc00ff, #e600ff, #ff00ff, #ff00e6, #ff00cc, #ff00b3, #ff0099, #ff0080, #ff0066, #ff004d, #ff0033, #ff001a, #ff0000)',
+                        backgroundOrigin: 'border-box',
+                        backgroundClip: 'padding-box, border-box'
+                      }}>
+                        <GrGallery className="w-7 h-7 text-gray-700" />
                       </div>
-                      <span className="text-xs text-gray-600 font-medium">Galería</span>
+                      <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Galería</span>
                     </button>
                   </div>
                 </div>
@@ -203,23 +210,28 @@ export default function ImageUpload({
                 <button
                   type="button"
                   onClick={handleTakePhoto}
-                  className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
+                  className="flex flex-col items-center gap-2 py-3 rounded-xl"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <Camera className="w-6 h-6 text-gray-700" />
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{ border: '2.5px solid black' }}>
+                    <PiCameraBold className="w-7 h-7 text-gray-700" />
                   </div>
-                  <span className="text-xs text-gray-600 font-medium">Foto</span>
+                  <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Foto</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleChooseFromGallery}
-                  className="flex flex-col items-center gap-2 py-3 hover:bg-gray-50 rounded-xl transition-colors"
+                  className="flex flex-col items-center gap-2 py-3 rounded-xl"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <ImagePlus className="w-6 h-6 text-gray-700" />
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{
+                    border: '3px solid transparent',
+                    backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #ff0000, #ff1a00, #ff3300, #ff4d00, #ff6600, #ff8000, #ff9900, #ffb300, #ffcc00, #ffe600, #ffff00, #e6ff00, #ccff00, #b3ff00, #99ff00, #80ff00, #66ff00, #4dff00, #33ff00, #1aff00, #00ff00, #00ff1a, #00ff33, #00ff4d, #00ff66, #00ff80, #00ff99, #00ffb3, #00ffcc, #00ffe6, #00ffff, #00e6ff, #00ccff, #00b3ff, #0099ff, #0080ff, #0066ff, #004dff, #0033ff, #001aff, #0000ff, #1a00ff, #3300ff, #4d00ff, #6600ff, #8000ff, #9900ff, #b300ff, #cc00ff, #e600ff, #ff00ff, #ff00e6, #ff00cc, #ff00b3, #ff0099, #ff0080, #ff0066, #ff004d, #ff0033, #ff001a, #ff0000)',
+                    backgroundOrigin: 'border-box',
+                    backgroundClip: 'padding-box, border-box'
+                  }}>
+                    <GrGallery className="w-7 h-7 text-gray-700" />
                   </div>
-                  <span className="text-xs text-gray-600 font-medium">Galería</span>
+                  <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Galería</span>
                 </button>
               </div>
             </div>
