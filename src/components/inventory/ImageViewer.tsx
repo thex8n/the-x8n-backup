@@ -170,12 +170,16 @@ export default function ImageViewer({
     setError(null)
     setShowCropModal(false)
 
+    // 🎯 Crear URL local del blob
     const localUrl = URL.createObjectURL(croppedBlob)
+    
+    // ✅ Mostrar imagen local inmediatamente
+    setCurrentImage(localUrl)
     setUploading(true)
 
+    // Simular delay visual
     setTimeout(() => {
       if (isMountedRef.current) {
-        setCurrentImage(localUrl)
         setUploading(false)
       }
     }, 1000)
@@ -187,34 +191,34 @@ export default function ImageViewer({
       const uploadResult = await uploadProductImage(formData)
 
       if (uploadResult.success && uploadResult.url) {
-        // ✅ SOLUCIÓN: Cache-busting con timestamp
+        // ✅ Cache-busting con timestamp
         const cacheBustedUrl = uploadResult.url + '?t=' + Date.now()
 
-        if (isMountedRef.current) {
-          setCurrentImage(cacheBustedUrl)
+        // 🎯 SOLUCIÓN: NO cambiar currentImage, mantener la local
+        // setCurrentImage(cacheBustedUrl) ← ESTO SE QUITA
 
-          // 🎯 Actualizar lista con URL del servidor (cache-busted)
-          if (onImageUpdate) {
-            onImageUpdate(cacheBustedUrl)
-          }
+        // ✅ Actualizar lista en segundo plano
+        if (onImageUpdate) {
+          onImageUpdate(cacheBustedUrl)
         }
 
-        // 🗑️ Revocar blob: DESPUÉS con delay
-        setTimeout(() => {
-          URL.revokeObjectURL(localUrl)
-        }, 100)
-
+        // ✅ Actualizar base de datos
         if (productId) {
           const updateResult = await updateProductImage(productId, uploadResult.url)
 
           if (!updateResult.success && isMountedRef.current) {
             setError(updateResult.error || 'Error al actualizar producto')
+            // Solo en caso de error, volver a la imagen original
             setCurrentImage(imageUrl)
             if (onImageUpdate) {
               onImageUpdate(imageUrl)
             }
+            URL.revokeObjectURL(localUrl)
           }
         }
+
+        // 🗑️ NO revocar el blob: aquí porque lo estamos usando
+        // Se revocará cuando el usuario cierre el viewer o el componente se desmonte
       } else {
         if (isMountedRef.current) {
           setError(uploadResult.error || 'Error al subir imagen')
