@@ -8,19 +8,14 @@ interface ViewOptionsModalProps {
   onClose: () => void
   onStatsToggle: (show: boolean) => void
   showStats: boolean
+  onCategoriesToggle: (show: boolean) => void
+  showCategories: boolean
 }
 
-export default function ViewOptionsModal({ onClose, onStatsToggle, showStats }: ViewOptionsModalProps) {
+export default function ViewOptionsModal({ onClose, onStatsToggle, showStats, onCategoriesToggle, showCategories }: ViewOptionsModalProps) {
   const [isClosing, setIsClosing] = useState(false)
-  const [showCategories, setShowCategories] = useState(true) // Solo visual por ahora
 
   useEffect(() => {
-    // Cargar estado de categorías desde localStorage
-    const savedShowCategories = localStorage.getItem('showCategories')
-    if (savedShowCategories !== null) {
-      setShowCategories(JSON.parse(savedShowCategories))
-    }
-
     // Bloquear scroll del body
     document.body.style.overflow = 'hidden'
 
@@ -50,7 +45,7 @@ export default function ViewOptionsModal({ onClose, onStatsToggle, showStats }: 
 
   const handleCategoriesToggle = () => {
     const newValue = !showCategories
-    setShowCategories(newValue)
+    onCategoriesToggle(newValue)
     localStorage.setItem('showCategories', JSON.stringify(newValue))
   }
 

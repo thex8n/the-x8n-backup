@@ -33,7 +33,7 @@ export default function MobileSearchHeader({
   }
 
   return (
-    <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {!isExpanded ? (
         <div className="flex items-center justify-end gap-2 p-4">
           <button
@@ -41,7 +41,7 @@ export default function MobileSearchHeader({
             className="p-2"
             aria-label="Opciones de vista"
           >
-            <Table2 className="w-6 h-6 text-gray-700" />
+            <Table2 className="w-6 h-6 text-black" />
           </button>
           {onHistoryClick && (
             <button
@@ -49,7 +49,7 @@ export default function MobileSearchHeader({
               className="p-2"
               aria-label="Ver historial"
             >
-              <ClipboardClock className="w-6 h-6 text-gray-700" />
+              <ClipboardClock className="w-6 h-6 text-black" />
             </button>
           )}
           <button
@@ -57,7 +57,7 @@ export default function MobileSearchHeader({
             className="p-2"
             aria-label="Abrir búsqueda"
           >
-            <IoSearch className="w-6 h-6 text-gray-700" />
+            <IoSearch className="w-6 h-6 text-black" />
           </button>
         </div>
       ) : (
@@ -78,7 +78,7 @@ export default function MobileSearchHeader({
             className="p-2"
             aria-label="Cerrar búsqueda"
           >
-            <X className="w-6 h-6 text-gray-700" />
+            <X className="w-6 h-6 text-black" />
           </button>
         </div>
       )}

@@ -7,9 +7,10 @@ interface ProductStatsProps {
   products: Product[]
   showStats: boolean
   isLoading?: boolean
+  topPosition?: string
 }
 
-export default function ProductStats({ products, showStats, isLoading = false }: ProductStatsProps) {
+export default function ProductStats({ products, showStats, isLoading = false, topPosition = '70px' }: ProductStatsProps) {
   const [shouldShow, setShouldShow] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
@@ -196,29 +197,36 @@ export default function ProductStats({ products, showStats, isLoading = false }:
         .animate-slideUpFade {
           animation: slideUpFade 0.15s ease-in forwards;
         }
+
+        .momo-font {
+          font-family: var(--font-momo-trust), sans-serif;
+        }
       `}</style>
 
       {/* 📱 VERSIÓN MÓVIL */}
       <div className="md:hidden">
         {shouldShow && hasFinishedLoading && (
-          <div className={`fixed top-[70px] left-0 right-0 bg-white border-b border-gray-200 z-30 shadow-sm ${
-            isVisible ? 'animate-slideDownFade' : 'animate-slideUpFade'
-          }`}>
-          <div className="flex gap-1 overflow-x-auto px-4 scrollbar-hide">
+          <div
+            className={`fixed left-0 right-0 bg-white z-60 ${
+              isVisible ? 'animate-slideDownFade' : 'animate-slideUpFade'
+            }`}
+            style={{ top: topPosition }}
+          >
+          <div className="flex gap-1 overflow-x-auto px-4 py-2 scrollbar-hide">
             {stats.map((stat, index) => (
               <div
                 key={index}
                 className="flex flex-col items-center justify-center bg-gray-50 rounded-lg p-2 min-w-[70px] shrink-0"
               >
-                <div className="text-gray-600 mb-1">
+                <div className="text-black mb-1">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     {stat.icon.props.children}
                   </svg>
                 </div>
-                <p className={`text-sm font-bold leading-none mb-0.5 ${stat.alert ? 'text-red-600' : 'text-gray-900'}`}>
+                <p className={`text-sm font-bold leading-none mb-0.5 momo-font ${stat.alert ? 'text-red-600' : 'text-black'}`}>
                   {stat.valueCompact}
                 </p>
-                <p className="text-[10px] text-gray-500 text-center leading-tight">
+                <p className="text-[10px] text-gray-500 text-center leading-tight momo-font">
                   {stat.labelShort}
                 </p>
               </div>
@@ -239,11 +247,11 @@ export default function ProductStats({ products, showStats, isLoading = false }:
             className={`flex-1 bg-white shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow ${index === 0 ? 'rounded-l-lg' : ''} ${index === stats.length - 1 ? 'rounded-r-lg' : ''} ${index !== 0 ? 'border-l-0' : ''}`}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-100 text-gray-600">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gray-100 text-black">
                 {stat.icon}
               </div>
               {!stat.alert && stat.change && (
-                <span className="text-sm text-gray-500 flex items-center gap-1">
+                <span className="text-sm text-gray-500 flex items-center gap-1 momo-font">
                   vs último mes
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -253,12 +261,12 @@ export default function ProductStats({ products, showStats, isLoading = false }:
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-600 momo-font">{stat.label}</p>
+              <p className="text-2xl font-bold text-black momo-font">
                 {stat.value}
               </p>
               {!stat.alert && stat.change && (
-                <p className={`text-sm font-medium flex items-center gap-1 ${
+                <p className={`text-sm font-medium flex items-center gap-1 momo-font ${
                   stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
                 }`}>
                   {stat.trend === 'up' ? (

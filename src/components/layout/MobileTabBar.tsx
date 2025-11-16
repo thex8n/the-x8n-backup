@@ -8,18 +8,6 @@ import { TbDeviceAnalytics } from "react-icons/tb"
 import { PiCashRegister } from 'react-icons/pi'
 import type { IconType } from 'react-icons'
 import { LuLayoutDashboard } from "react-icons/lu"
-import localFont from 'next/font/local'
-
-// Configurar la fuente personalizada
-const momoTrust = localFont({
-  src: [{
-    path: '../../../public/fonts/Momo_Trust_Display/MomoTrustDisplay-Regular.ttf',
-    weight: '400',
-    style: 'normal',
-  }],
-  variable: '--font-momo-trust',
-  display: 'swap',
-})
 
 type TabItem = {
   name: string
@@ -126,7 +114,7 @@ function TabButton({ item, isActive, isTransitioning }: TabButtonProps) {
     <Link
       href={item.path}
       className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 px-1.5 xs:px-2 py-2 rounded-2xl min-w-44px min-h-44px ${
-        isActive ? 'text-white' : 'text-gray-500 hover:text-blue-600'
+        isActive ? 'text-white' : 'text-black hover:text-blue-600'
       }`}
     >
       {isActive && (
@@ -168,8 +156,8 @@ function TabButton({ item, isActive, isTransitioning }: TabButtonProps) {
       <div className="relative z-10 flex flex-col items-center gap-0.5 sm:gap-1">
         {!isActive && <Icon className="transition-all duration-500 scale-100 opacity-100" strokeWidth={2} style={{ width: 'clamp(1.25rem, 4vw, 1.5rem)', height: 'clamp(1.25rem, 4vw, 1.5rem)' }} />}
         <span
-          className={`${momoTrust.className} font-semibold ${isActive ? 'mt-3 xs:mt-4 opacity-100' : 'opacity-80'} leading-tight`}
-          style={{ fontSize: 'clamp(0.6rem, 2.5vw, 0.75rem)' }}
+          className={`font-semibold ${isActive ? 'mt-3 xs:mt-4 opacity-100' : 'opacity-80'} leading-tight`}
+          style={{ fontSize: 'clamp(0.6rem, 2.5vw, 0.75rem)', fontFamily: 'var(--font-momo-trust), sans-serif' }}
         >
           {item.name}
         </span>

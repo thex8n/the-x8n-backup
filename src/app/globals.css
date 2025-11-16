@@ -5,7 +5,7 @@
   src: url('/fonts/Momo_Trust_Display/MomoTrustDisplay-Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 :root {
@@ -239,4 +239,18 @@ html, body {
 
 .animate-slow-spin {
   animation: slowSpin 2s linear infinite;
+}
+
+/* Animación para barra de carga */
+@keyframes loadingBar {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.animate-loading-bar {
+  animation: loadingBar 2s ease-in-out;
 }

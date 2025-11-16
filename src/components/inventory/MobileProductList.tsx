@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ProductWithCategory } from '@/types/product'
 import { deleteProduct } from '@/app/actions/products'
 import { ImagePlus } from 'lucide-react'
@@ -11,28 +11,38 @@ interface MobileProductListProps {
   products: ProductWithCategory[]
   onProductDeleted: () => void
   onProductEdit: (product: ProductWithCategory) => void
+  isLoading?: boolean
 }
 
-export default function MobileProductList({ products, onProductDeleted, onProductEdit }: MobileProductListProps) {
+export default function MobileProductList({ products, onProductDeleted, onProductEdit, isLoading = false }: MobileProductListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const [viewingImage, setViewingImage] = useState<{ 
+  const [viewingImage, setViewingImage] = useState<{
     url: string
     name: string
     productId: string
-    originRect: DOMRect | null 
+    originRect: DOMRect | null
   } | null>(null)
   const [localProducts, setLocalProducts] = useState(products)
-  
+  const [hasFinishedLoading, setHasFinishedLoading] = useState(false)
+
   // 🎯 NUEVO: Guardar imágenes locales temporales
   const [tempImageUrls, setTempImageUrls] = useState<Record<string, string>>({})
-  
+
   const imageRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  useState(() => {
+  // Sincronizar localProducts con products prop
+  useEffect(() => {
     setLocalProducts(products)
-  })
+  }, [products])
+
+  // Detectar cuando termina la carga inicial
+  useEffect(() => {
+    if (!isLoading && !hasFinishedLoading) {
+      setHasFinishedLoading(true)
+    }
+  }, [isLoading, hasFinishedLoading])
 
   const handleDelete = async (productId: string) => {
     setDeletingId(productId)
@@ -114,6 +124,11 @@ export default function MobileProductList({ products, onProductDeleted, onProduc
         </p>
       </div>
     )
+  }
+
+  // No renderizar hasta que termine la carga
+  if (!hasFinishedLoading) {
+    return null
   }
 
   return (

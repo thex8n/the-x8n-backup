@@ -15,10 +15,12 @@ import CategoryFilter from '@/components/inventory/CategoryFilter'
 import MobileSearchHeader from '@/components/inventory/MobileSearchHeader'
 import BarcodeScannerModal from '@/components/inventory/BarcodeScannerModal'
 import ViewOptionsModal from '@/components/inventory/ViewOptionsModal'
+import MobileCategoryBar from '@/components/inventory/MobileCategoryBar'
 import { getProducts } from '@/app/actions/products'
 import { getCategories } from '@/app/actions/categories'
 import { ProductWithCategory } from '@/types/product'
 import { Category } from '@/types/category'
+import { useLoading } from '@/contexts/LoadingContext'
 
 // Cargar ProductStats solo en el cliente para evitar problemas de hidratación con localStorage
 const ProductStats = dynamic(() => import('@/components/inventory/ProductStats'), {
@@ -37,6 +39,7 @@ interface ScannedProduct {
 
 export default function InventoryPage() {
   const router = useRouter()
+  const { registerLoader, unregisterLoader } = useLoading()
   const [showModeSelection, setShowModeSelection] = useState(false)
   const [showAddProductForm, setShowAddProductForm] = useState(false)
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
@@ -54,6 +57,49 @@ export default function InventoryPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [showStats, setShowStats] = useState(true)
+  const [showCategories, setShowCategories] = useState(true)
+  const [componentOrder, setComponentOrder] = useState<string[]>(['stats', 'categories'])
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detectar si estamos en mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // 🔒 PREVENIR ZOOM EN LA PÁGINA
+  useEffect(() => {
+    // Prevenir zoom con gestos de pellizco
+    const preventZoom = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault()
+      }
+    }
+
+    // Prevenir zoom con doble tap
+    let lastTouchEnd = 0
+    const preventDoubleTapZoom = (e: TouchEvent) => {
+      const now = Date.now()
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault()
+      }
+      lastTouchEnd = now
+    }
+
+    document.addEventListener('touchstart', preventZoom, { passive: false })
+    document.addEventListener('touchend', preventDoubleTapZoom, { passive: false })
+
+    return () => {
+      document.removeEventListener('touchstart', preventZoom)
+      document.removeEventListener('touchend', preventDoubleTapZoom)
+    }
+  }, [])
 
   // Leer estado de localStorage al cargar
   useEffect(() => {
@@ -61,17 +107,28 @@ export default function InventoryPage() {
     if (savedShowStats !== null) {
       setShowStats(JSON.parse(savedShowStats))
     }
+
+    const savedShowCategories = localStorage.getItem('showCategories')
+    if (savedShowCategories !== null) {
+      setShowCategories(JSON.parse(savedShowCategories))
+    }
+
+    const savedComponentOrder = localStorage.getItem('componentOrder')
+    if (savedComponentOrder !== null) {
+      setComponentOrder(JSON.parse(savedComponentOrder))
+    }
   }, [])
 
 
   const loadProducts = async () => {
-    setLoading(true)
     const result = await getProducts()
     if ('data' in result && result.data) {
+      console.log('Productos cargados:', result.data.length)
       setAllProducts(result.data)
       setFilteredProducts(result.data)
+    } else {
+      console.error('Error cargando productos:', result)
     }
-    setLoading(false)
   }
 
   const loadCategories = async () => {
@@ -84,9 +141,23 @@ export default function InventoryPage() {
     }
   }
 
+  // Cargar productos y categorías en paralelo
   useEffect(() => {
-    loadProducts()
-    loadCategories()
+    const loadData = async () => {
+      registerLoader('inventory-page')
+
+      try {
+        await Promise.all([loadProducts(), loadCategories()])
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
+        unregisterLoader('inventory-page')
+      }
+    }
+
+    loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSuccess = () => {
@@ -127,6 +198,81 @@ export default function InventoryPage() {
   const handleCategoryChange = useCallback((categoryId: string | null) => {
     setSelectedCategoryId(categoryId)
   }, [])
+
+  // Calcular posiciones dinámicas basadas en el orden
+  const getComponentPosition = (componentId: string): string => {
+    const baseTop = 70 // Posición inicial debajo del header
+    const statsHeight = 65 // Altura de ProductStats
+    const categoriesHeight = 50 // Altura de MobileCategoryBar
+
+    const visibleComponents = componentOrder.filter(id => {
+      if (id === 'stats') return showStats
+      if (id === 'categories') return showCategories
+      return false
+    })
+
+    const index = visibleComponents.indexOf(componentId)
+    if (index === -1) return `${baseTop}px`
+
+    let topPosition = baseTop
+
+    // Si está de primero (index === 0), subir 10px
+    if (index === 0) {
+      if (componentId === 'categories') topPosition -= 10
+      if (componentId === 'stats') topPosition -= 10
+    }
+
+    // Si es stats y categories está visible Y es la primera (index 0), subir 17px adicionales
+    if (componentId === 'stats' && showCategories && visibleComponents[0] === 'categories') {
+      topPosition -= 17
+    }
+
+    for (let i = 0; i < index; i++) {
+      const prevComponent = visibleComponents[i]
+      if (prevComponent === 'stats') topPosition += statsHeight
+      if (prevComponent === 'categories') topPosition += categoriesHeight
+    }
+
+    return `${topPosition}px`
+  }
+
+  // Calcular padding dinámico del contenedor principal
+  const getContainerPaddingTop = (): number => {
+    const baseTop = 70 // Altura del search header
+    const statsHeight = 65
+    const categoriesHeight = 50
+    const spacing = 15 // Espacio constante entre componentes y productos
+
+    const visibleComponents = componentOrder.filter(id => {
+      if (id === 'stats') return showStats
+      if (id === 'categories') return showCategories
+      return false
+    })
+
+    // Empezar desde el search header
+    let totalHeight = baseTop
+
+    // Calcular alturas de los componentes visibles
+    visibleComponents.forEach(id => {
+      if (id === 'stats') totalHeight += statsHeight
+      if (id === 'categories') totalHeight += categoriesHeight
+    })
+
+    // Agregar spacing constante
+    totalHeight += spacing
+
+    // Si solo categorías está seleccionada, reducir 6px
+    if (showCategories && !showStats) {
+      totalHeight -= 6
+    }
+
+    // Si solo estadísticas está seleccionada, aumentar 5px
+    if (showStats && !showCategories) {
+      totalHeight += 5
+    }
+
+    return totalHeight
+  }
 
   const handleModeSelect = (mode: 'manual' | 'scanner') => {
     setShowModeSelection(false)
@@ -242,6 +388,26 @@ export default function InventoryPage() {
 
   const handleStatsToggle = (show: boolean) => {
     setShowStats(show)
+
+    // Si se activa, mover al final del orden
+    if (show) {
+      const newOrder = componentOrder.filter(id => id !== 'stats')
+      newOrder.push('stats')
+      setComponentOrder(newOrder)
+      localStorage.setItem('componentOrder', JSON.stringify(newOrder))
+    }
+  }
+
+  const handleCategoriesToggle = (show: boolean) => {
+    setShowCategories(show)
+
+    // Si se activa, mover al final del orden
+    if (show) {
+      const newOrder = componentOrder.filter(id => id !== 'categories')
+      newOrder.push('categories')
+      setComponentOrder(newOrder)
+      localStorage.setItem('componentOrder', JSON.stringify(newOrder))
+    }
   }
 
   return (
@@ -253,9 +419,12 @@ export default function InventoryPage() {
         onOptionsClick={() => setShowViewOptions(true)}
       />
 
-      <div className={`p-8 md:pt-8 md:pb-8 transition-all duration-300 ease-out ${
-        showStats ? 'pt-40 pb-32' : 'pt-[100px] pb-32'
-      }`}>
+      <div
+        className="p-8 md:pt-8 md:pb-8 pb-32 transition-all duration-300 ease-out"
+        style={{
+          paddingTop: isMobile ? `${getContainerPaddingTop()}px` : undefined
+        }}
+      >
         <div className="hidden md:block mb-6 -mt-4">
           <div className="flex items-center justify-between mb-6 relative">
             <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
@@ -276,7 +445,22 @@ export default function InventoryPage() {
           <div className="border-t border-gray-300 mb-6"></div>
         </div>
 
-        <ProductStats products={filteredProducts} showStats={showStats} isLoading={loading} />
+        <ProductStats
+          products={filteredProducts}
+          showStats={showStats}
+          isLoading={loading}
+          topPosition={getComponentPosition('stats')}
+        />
+
+        <MobileCategoryBar
+          categories={categories}
+          selectedCategoryId={selectedCategoryId}
+          onCategoryChange={handleCategoryChange}
+          showCategories={showCategories}
+          isLoading={loading}
+          onCreateNew={() => setShowAddCategoryForm(true)}
+          topPosition={getComponentPosition('categories')}
+        />
 
         <div className="hidden md:flex mb-6 items-center gap-3 flex-wrap">
           <button
@@ -327,37 +511,22 @@ export default function InventoryPage() {
           </button>
         </div>
 
-        {loading ? (
-          <div className="md:flex md:items-center md:justify-center md:h-[60vh] md:min-h-[400px] md:max-h-screen md:overflow-hidden fixed md:relative inset-0 flex items-center justify-center md:inset-auto z-40 bg-gray-50" style={{ top: '4rem', bottom: '4rem' }}>
-            <div className="relative w-24 h-24">
-              <div
-                className="absolute inset-0 rounded-full animate-slow-spin"
-                style={{
-                  background: 'conic-gradient(from 0deg, transparent 0deg, transparent 30deg, rgba(147, 197, 253, 0.3) 90deg, #93c5fd 180deg, #60a5fa 270deg, #3b82f6 360deg)'
-                }}
-              ></div>
-              <div className="absolute inset-3 rounded-full bg-gray-50"></div>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="hidden md:block">
-              <ProductList
-                products={filteredProducts}
-                onProductDeleted={loadProducts}
-                onProductEdit={setEditingProduct}
-              />
-            </div>
+        <div className="hidden md:block">
+          <ProductList
+            products={filteredProducts}
+            onProductDeleted={loadProducts}
+            onProductEdit={setEditingProduct}
+          />
+        </div>
 
-            <div className="md:hidden">
-              <MobileProductList
-                products={filteredProducts}
-                onProductDeleted={loadProducts}
-                onProductEdit={setEditingProduct}
-              />
-            </div>
-          </>
-        )}
+        <div className="md:hidden">
+          <MobileProductList
+            products={filteredProducts}
+            onProductDeleted={loadProducts}
+            onProductEdit={setEditingProduct}
+            isLoading={loading}
+          />
+        </div>
 
         <button
           onClick={() => setShowModeSelection(true)}
@@ -393,6 +562,8 @@ export default function InventoryPage() {
             onClose={() => setShowViewOptions(false)}
             onStatsToggle={handleStatsToggle}
             showStats={showStats}
+            onCategoriesToggle={handleCategoriesToggle}
+            showCategories={showCategories}
           />
         )}
 

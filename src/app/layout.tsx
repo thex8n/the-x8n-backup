@@ -1,7 +1,10 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
 import Toaster from "@/components/ui/Toaster"
+import InitialLoader from "@/components/ui/InitialLoader"
+import { LoadingProvider } from "@/contexts/LoadingContext"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -11,6 +14,17 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+})
+
+const momoTrust = localFont({
+  src: [{
+    path: '../../public/fonts/Momo_Trust_Display/MomoTrustDisplay-Regular.ttf',
+    weight: '400',
+    style: 'normal',
+  }],
+  variable: '--font-momo-trust',
+  display: 'block',
+  preload: true,
 })
 
 export const metadata: Metadata = {
@@ -32,18 +46,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link
-          rel="preload"
-          href="/fonts/Momo_Trust_Display/MomoTrustDisplay-Regular.ttf"
-          as="font"
-          type="font/ttf"
-          crossOrigin="anonymous"
-        />
-      </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
-        <Toaster />
+      <body className={`${geistSans.variable} ${geistMono.variable} ${momoTrust.variable} antialiased`}>
+        <LoadingProvider>
+          <InitialLoader />
+          {children}
+          <Toaster />
+        </LoadingProvider>
       </body>
     </html>
   )
