@@ -11,40 +11,19 @@ interface ProductStatsProps {
 }
 
 export default function ProductStats({ products, showStats, isLoading = false, topPosition = '70px' }: ProductStatsProps) {
-  const [shouldShow, setShouldShow] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [isVisible, setIsVisible] = useState(false)
+  const [hasAnimated, setHasAnimated] = useState(false)
   const [hasFinishedLoading, setHasFinishedLoading] = useState(false)
-
-  useEffect(() => {
-    setIsLoaded(true)
-  }, [])
 
   // Detectar cuando termina la carga inicial
   useEffect(() => {
     if (!isLoading && !hasFinishedLoading) {
       setHasFinishedLoading(true)
+      // Marcar como animado después de la primera carga
+      setTimeout(() => {
+        setHasAnimated(true)
+      }, 300)
     }
   }, [isLoading, hasFinishedLoading])
-
-  // Sincronizar con la prop showStats cuando cambia
-  useEffect(() => {
-    if (isLoaded) {
-      if (showStats) {
-        setIsVisible(true)
-        setShouldShow(true)
-      } else {
-        setIsVisible(false) // Trigger la animación de salida
-        const timer = setTimeout(() => {
-          setShouldShow(false) // Remover del DOM después de la animación
-        }, 150) // Duración de la animación
-        return () => clearTimeout(timer)
-      }
-    }
-  }, [showStats, isLoaded])
-
-  // Siempre renderizar el contenedor para evitar layout shift, pero ocultar el contenido si no está visible
-  // if (!isLoaded || !isVisible) return null
 
   const totalProducts = products.length
 
@@ -179,23 +158,8 @@ export default function ProductStats({ products, showStats, isLoading = false, t
           }
         }
 
-        @keyframes slideUpFade {
-          from {
-            opacity: 1;
-            transform: translateY(0);
-          }
-          to {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-        }
-
         .animate-slideDownFade {
           animation: slideDownFade 0.3s ease-out forwards;
-        }
-
-        .animate-slideUpFade {
-          animation: slideUpFade 0.15s ease-in forwards;
         }
 
         .momo-font {
@@ -205,11 +169,9 @@ export default function ProductStats({ products, showStats, isLoading = false, t
 
       {/* 📱 VERSIÓN MÓVIL */}
       <div className="md:hidden">
-        {shouldShow && hasFinishedLoading && (
+        {showStats && hasFinishedLoading && (
           <div
-            className={`fixed left-0 right-0 bg-white z-60 ${
-              isVisible ? 'animate-slideDownFade' : 'animate-slideUpFade'
-            }`}
+            className={`fixed left-0 right-0 bg-white z-60 ${!hasAnimated ? 'animate-slideDownFade' : ''}`}
             style={{ top: topPosition }}
           >
           <div className="flex gap-1 overflow-x-auto px-4 py-2 scrollbar-hide">
@@ -237,10 +199,8 @@ export default function ProductStats({ products, showStats, isLoading = false, t
       </div>
 
       {/* 💻 VERSIÓN DESKTOP */}
-      {shouldShow && (
-        <div className={`hidden md:flex gap-0 mb-8 overflow-x-auto scrollbar-hide ${
-          isVisible ? 'animate-slideDownFade' : 'animate-slideUpFade'
-        }`}>
+      {showStats && hasFinishedLoading && (
+        <div className={`hidden md:flex gap-0 mb-8 overflow-x-auto scrollbar-hide ${!hasAnimated ? 'animate-slideDownFade' : ''}`}>
         {stats.map((stat, index) => (
           <div
             key={index}

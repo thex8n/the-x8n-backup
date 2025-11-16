@@ -389,12 +389,14 @@ export default function InventoryPage() {
   const handleStatsToggle = (show: boolean) => {
     setShowStats(show)
 
-    // Si se activa, mover al final del orden
+    // Si se activa, mover al final del orden DESPUÉS de la animación
     if (show) {
-      const newOrder = componentOrder.filter(id => id !== 'stats')
-      newOrder.push('stats')
-      setComponentOrder(newOrder)
-      localStorage.setItem('componentOrder', JSON.stringify(newOrder))
+      setTimeout(() => {
+        const newOrder = componentOrder.filter(id => id !== 'stats')
+        newOrder.push('stats')
+        setComponentOrder(newOrder)
+        localStorage.setItem('componentOrder', JSON.stringify(newOrder))
+      }, 400) // Esperar a que termine la animación
     }
   }
 
@@ -447,7 +449,7 @@ export default function InventoryPage() {
 
         <ProductStats
           products={filteredProducts}
-          showStats={showStats}
+          showStats={showStats && !showAddCategoryForm && !showAddProductForm && !editingProduct}
           isLoading={loading}
           topPosition={getComponentPosition('stats')}
         />
@@ -456,7 +458,7 @@ export default function InventoryPage() {
           categories={categories}
           selectedCategoryId={selectedCategoryId}
           onCategoryChange={handleCategoryChange}
-          showCategories={showCategories}
+          showCategories={showCategories && !showAddCategoryForm && !showAddProductForm && !editingProduct}
           isLoading={loading}
           onCreateNew={() => setShowAddCategoryForm(true)}
           topPosition={getComponentPosition('categories')}
