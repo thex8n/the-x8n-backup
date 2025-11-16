@@ -1,23 +1,29 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, History } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import AddProductForm from '@/components/inventory/AddProductForm'
 import AddCategoryForm from '@/components/inventory/AddCategoryForm'
 import EditProductForm from '@/components/inventory/EditProductForm'
 import ProductList from '@/components/inventory/ProductList'
 import MobileProductList from '@/components/inventory/MobileProductList'
-import ProductStats from '@/components/inventory/ProductStats'
 import SearchBar from '@/components/inventory/SearchBar'
 import InventoryModeSelectionModal from '@/components/inventory/InventoryModeSelectionModal'
 import CategoryFilter from '@/components/inventory/CategoryFilter'
 import MobileSearchHeader from '@/components/inventory/MobileSearchHeader'
 import BarcodeScannerModal from '@/components/inventory/BarcodeScannerModal'
+import ViewOptionsModal from '@/components/inventory/ViewOptionsModal'
 import { getProducts } from '@/app/actions/products'
 import { getCategories } from '@/app/actions/categories'
 import { ProductWithCategory } from '@/types/product'
 import { Category } from '@/types/category'
+
+// Cargar ProductStats solo en el cliente para evitar problemas de hidratación con localStorage
+const ProductStats = dynamic(() => import('@/components/inventory/ProductStats'), {
+  ssr: false
+})
 
 interface ScannedProduct {
   id: string
@@ -35,6 +41,7 @@ export default function InventoryPage() {
   const [showAddProductForm, setShowAddProductForm] = useState(false)
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
+  const [showViewOptions, setShowViewOptions] = useState(false)
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
   const [scannerHistory, setScannerHistory] = useState<ScannedProduct[]>([])
   const [comesFromScanner, setComesFromScanner] = useState(false)
@@ -46,7 +53,16 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
-  const [isStatsExpanded, setIsStatsExpanded] = useState(true)
+  const [showStats, setShowStats] = useState(true)
+
+  // Leer estado de localStorage al cargar
+  useEffect(() => {
+    const savedShowStats = localStorage.getItem('showStats')
+    if (savedShowStats !== null) {
+      setShowStats(JSON.parse(savedShowStats))
+    }
+  }, [])
+
 
   const loadProducts = async () => {
     setLoading(true)
@@ -162,7 +178,6 @@ export default function InventoryPage() {
     setScannerHistory(history)
     localStorage.setItem('scanner_history', JSON.stringify(history))
 
-    // Guardar en D1 database
     try {
       await fetch('/api/inventory-history', {
         method: 'POST',
@@ -180,7 +195,6 @@ export default function InventoryPage() {
       console.error('Error guardando en D1:', err)
     }
 
-    // Notificar al scanner para actualizar su historial interno
     if (onHistoryAddCallback) {
       onHistoryAddCallback(newHistoryItem)
     }
@@ -226,16 +240,21 @@ export default function InventoryPage() {
     setDraggedIndex(null)
   }
 
+  const handleStatsToggle = (show: boolean) => {
+    setShowStats(show)
+  }
+
   return (
     <>
       <MobileSearchHeader
         onSearch={handleSearch}
         searchQuery={searchQuery}
         onHistoryClick={() => router.push('/inventory_history')}
+        onOptionsClick={() => setShowViewOptions(true)}
       />
 
-      <div className={`p-8 pb-32 md:pt-8 md:pb-8 transition-all duration-300 ${
-        isStatsExpanded ? 'pt-40' : 'pt-[100px]'
+      <div className={`p-8 md:pt-8 md:pb-8 transition-all duration-300 ease-out ${
+        showStats ? 'pt-40 pb-32' : 'pt-[100px] pb-32'
       }`}>
         <div className="hidden md:block mb-6 -mt-4">
           <div className="flex items-center justify-between mb-6 relative">
@@ -257,7 +276,7 @@ export default function InventoryPage() {
           <div className="border-t border-gray-300 mb-6"></div>
         </div>
 
-        <ProductStats products={filteredProducts} onExpandChange={setIsStatsExpanded} />
+        <ProductStats products={filteredProducts} showStats={showStats} />
 
         <div className="hidden md:flex mb-6 items-center gap-3 flex-wrap">
           <button
@@ -309,7 +328,7 @@ export default function InventoryPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center min-h-[calc(100vh-20rem)] md:min-h-[400px]">
+          <div className="md:flex md:items-center md:justify-center md:h-[60vh] md:min-h-[400px] md:max-h-screen md:overflow-hidden fixed md:relative inset-0 flex items-center justify-center md:inset-auto z-40 bg-gray-50" style={{ top: '4rem', bottom: '4rem' }}>
             <div className="relative w-24 h-24">
               <div
                 className="absolute inset-0 rounded-full animate-slow-spin"
@@ -343,8 +362,8 @@ export default function InventoryPage() {
         <button
           onClick={() => setShowModeSelection(true)}
           className="md:hidden fixed w-16 h-16 bg-black text-white rounded-2xl shadow-2xl transition-all flex items-center justify-center z-40 active:scale-95"
-          style={{ 
-            bottom: '6rem',
+          style={{
+            bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))',
             right: '1.5rem'
           }}
           aria-label="Crear"
@@ -366,6 +385,14 @@ export default function InventoryPage() {
           <InventoryModeSelectionModal
             onClose={() => setShowModeSelection(false)}
             onSelectMode={handleModeSelect}
+          />
+        )}
+
+        {showViewOptions && (
+          <ViewOptionsModal
+            onClose={() => setShowViewOptions(false)}
+            onStatsToggle={handleStatsToggle}
+            showStats={showStats}
           />
         )}
 

@@ -31,6 +31,19 @@ html, body {
   overflow: auto;
 }
 
+/* Prevenir movimiento del TabBar y Header en móvil */
+@media (max-width: 767px) {
+  /* Forzar posiciones fijas para elementos de navegación */
+  [class*="fixed"][class*="bottom-0"],
+  [class*="fixed"][class*="top-0"] {
+    position: fixed !important;
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+}
+
 .overscroll-contain {
   overscroll-behavior: contain;
 }

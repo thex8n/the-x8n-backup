@@ -5,22 +5,36 @@ import { Product } from '@/types/product'
 
 interface ProductStatsProps {
   products: Product[]
-  onExpandChange?: (isExpanded: boolean) => void
+  showStats: boolean
 }
 
-export default function ProductStats({ products, onExpandChange }: ProductStatsProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+export default function ProductStats({ products, showStats }: ProductStatsProps) {
+  const [shouldShow, setShouldShow] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
 
-  // Notificar al padre cada vez que cambia isExpanded
   useEffect(() => {
-    if (onExpandChange) {
-      onExpandChange(isExpanded)
-    }
-  }, [isExpanded, onExpandChange])
+    setIsLoaded(true)
+  }, [])
 
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded)
-  }
+  // Sincronizar con la prop showStats cuando cambia
+  useEffect(() => {
+    if (isLoaded) {
+      if (showStats) {
+        setIsVisible(true)
+        setShouldShow(true)
+      } else {
+        setIsVisible(false) // Trigger la animación de salida
+        const timer = setTimeout(() => {
+          setShouldShow(false) // Remover del DOM después de la animación
+        }, 150) // Duración de la animación
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [showStats, isLoaded])
+
+  // Siempre renderizar el contenedor para evitar layout shift, pero ocultar el contenido si no está visible
+  // if (!isLoaded || !isVisible) return null
 
   const totalProducts = products.length
 
@@ -143,12 +157,44 @@ export default function ProductStats({ products, onExpandChange }: ProductStatsP
 
   return (
     <>
-      {/* 📱 VERSIÓN MÓVIL - Con botón toggle superpuesto */}
+      <style jsx>{`
+        @keyframes slideDownFade {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideUpFade {
+          from {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+        }
+
+        .animate-slideDownFade {
+          animation: slideDownFade 0.3s ease-out forwards;
+        }
+
+        .animate-slideUpFade {
+          animation: slideUpFade 0.15s ease-in forwards;
+        }
+      `}</style>
+
+      {/* 📱 VERSIÓN MÓVIL */}
       <div className="md:hidden">
-        {/* Contenedor que desaparece completamente */}
-        <div className={`fixed top-[70px] left-0 right-0 bg-white border-b border-gray-200 z-30 shadow-sm transition-all duration-300 ${
-          isExpanded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
-        }`}>
+        {shouldShow && (
+          <div className={`fixed top-[70px] left-0 right-0 bg-white border-b border-gray-200 z-30 shadow-sm ${
+            isVisible ? 'animate-slideDownFade' : 'animate-slideUpFade'
+          }`}>
           <div className="flex gap-1 overflow-x-auto px-4 scrollbar-hide">
             {stats.map((stat, index) => (
               <div
@@ -170,34 +216,14 @@ export default function ProductStats({ products, onExpandChange }: ProductStatsP
             ))}
           </div>
         </div>
-
-        {/* Botón toggle superpuesto - SIEMPRE visible */}
-        <button
-          onClick={toggleExpanded}
-          className={`fixed left-4 z-50 bg-white border border-gray-300 rounded-full shadow-sm flex items-center justify-center transition-all duration-300 hover:shadow-md ${
-            isExpanded ? 'top-[130px] w-6 h-6' : 'top-[60px] w-8 h-8'
-          }`}
-          aria-label={isExpanded ? "Ocultar estadísticas" : "Mostrar estadísticas"}
-        >
-          <svg 
-            className={`text-gray-600 transition-all duration-300 ${
-              isExpanded ? 'w-3 h-3' : 'w-4 h-4'
-            }`}
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            {isExpanded ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            )}
-          </svg>
-        </button>
+        )}
       </div>
 
-      {/* 💻 VERSIÓN DESKTOP - Sin cambios */}
-      <div className="hidden md:flex gap-0 mb-8 overflow-x-auto">
+      {/* 💻 VERSIÓN DESKTOP */}
+      {shouldShow && (
+        <div className={`hidden md:flex gap-0 mb-8 overflow-x-auto scrollbar-hide ${
+          isVisible ? 'animate-slideDownFade' : 'animate-slideUpFade'
+        }`}>
         {stats.map((stat, index) => (
           <div
             key={index}
@@ -242,6 +268,7 @@ export default function ProductStats({ products, onExpandChange }: ProductStatsP
           </div>
         ))}
       </div>
+      )}
     </>
   )
 }

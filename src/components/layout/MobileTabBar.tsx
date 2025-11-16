@@ -125,7 +125,7 @@ function TabButton({ item, isActive, isTransitioning }: TabButtonProps) {
   return (
     <Link
       href={item.path}
-      className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 px-1.5 xs:px-2 py-2 rounded-2xl min-w-[44px] min-h-[44px] ${
+      className={`relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 px-1.5 xs:px-2 py-2 rounded-2xl min-w-44px min-h-44px ${
         isActive ? 'text-white' : 'text-gray-500 hover:text-blue-600'
       }`}
     >
