@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Category } from '@/types/category'
 import { Plus } from 'lucide-react'
+import { TiThMenu } from 'react-icons/ti'
 
 interface MobileCategoryBarProps {
   categories: Category[]
@@ -29,10 +30,18 @@ export default function MobileCategoryBar({
   const [hasFinishedLoading, setHasFinishedLoading] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null)
+  const [isMenuSelected, setIsMenuSelected] = useState(false)
 
   useEffect(() => {
     setIsLoaded(true)
   }, [])
+
+  // Deseleccionar el menú cuando se selecciona cualquier categoría
+  useEffect(() => {
+    if (selectedCategoryId !== null) {
+      setIsMenuSelected(false)
+    }
+  }, [selectedCategoryId])
 
   useEffect(() => {
     if (!isLoading && !hasFinishedLoading) {
@@ -130,18 +139,27 @@ export default function MobileCategoryBar({
             <div className={`flex gap-2 overflow-x-auto px-3 ${paddingTop} pb-2 scrollbar-hide`}>
               {/* Botón con ícono decorativo */}
               <button
-                className="px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 bg-gray-100 text-black border border-gray-100 flex items-center gap-1.5 momo-font"
+                onClick={() => {
+                  setIsMenuSelected(!isMenuSelected)
+                  onCategoryChange(null)
+                }}
+                className={`px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 border border-gray-100 flex items-center gap-1.5 momo-font ${
+                  isMenuSelected
+                    ? 'bg-black text-white'
+                    : 'bg-gray-100 text-black'
+                }`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+                <TiThMenu className="w-5 h-5" />
               </button>
 
               {/* Botón "Todas" */}
               <button
-                onClick={() => onCategoryChange(null)}
+                onClick={() => {
+                  setIsMenuSelected(false)
+                  onCategoryChange(null)
+                }}
                 className={`px-2 py-1 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 momo-font ${
-                  selectedCategoryId === null
+                  selectedCategoryId === null && !isMenuSelected
                     ? 'bg-black text-white'
                     : 'bg-gray-100 text-black border border-gray-100'
                 }`}
