@@ -6,16 +6,25 @@ import { Product } from '@/types/product'
 interface ProductStatsProps {
   products: Product[]
   showStats: boolean
+  isLoading?: boolean
 }
 
-export default function ProductStats({ products, showStats }: ProductStatsProps) {
+export default function ProductStats({ products, showStats, isLoading = false }: ProductStatsProps) {
   const [shouldShow, setShouldShow] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
+  const [hasFinishedLoading, setHasFinishedLoading] = useState(false)
 
   useEffect(() => {
     setIsLoaded(true)
   }, [])
+
+  // Detectar cuando termina la carga inicial
+  useEffect(() => {
+    if (!isLoading && !hasFinishedLoading) {
+      setHasFinishedLoading(true)
+    }
+  }, [isLoading, hasFinishedLoading])
 
   // Sincronizar con la prop showStats cuando cambia
   useEffect(() => {
@@ -191,7 +200,7 @@ export default function ProductStats({ products, showStats }: ProductStatsProps)
 
       {/* 📱 VERSIÓN MÓVIL */}
       <div className="md:hidden">
-        {shouldShow && (
+        {shouldShow && hasFinishedLoading && (
           <div className={`fixed top-[70px] left-0 right-0 bg-white border-b border-gray-200 z-30 shadow-sm ${
             isVisible ? 'animate-slideDownFade' : 'animate-slideUpFade'
           }`}>

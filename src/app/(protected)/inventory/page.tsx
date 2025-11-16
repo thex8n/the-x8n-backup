@@ -276,7 +276,7 @@ export default function InventoryPage() {
           <div className="border-t border-gray-300 mb-6"></div>
         </div>
 
-        <ProductStats products={filteredProducts} showStats={showStats} />
+        <ProductStats products={filteredProducts} showStats={showStats} isLoading={loading} />
 
         <div className="hidden md:flex mb-6 items-center gap-3 flex-wrap">
           <button
