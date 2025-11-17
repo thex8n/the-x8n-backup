@@ -980,7 +980,7 @@ export default function ImageViewer({
                   className="flex flex-col items-center gap-2 py-3 rounded-xl animate-fadeInUp-delayed"
                 >
                   <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{ border: '2.5px solid black' }}>
-                    <PiCameraBold className="w-7 h-7 text-gray-700" />
+                    <PiCameraBold className="w-7 h-7 text-black" />
                   </div>
                   <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Foto</span>
                 </button>
@@ -1000,7 +1000,7 @@ export default function ImageViewer({
                     backgroundOrigin: 'border-box',
                     backgroundClip: 'padding-box, border-box'
                   }}>
-                    <GrGallery className="w-7 h-7 text-gray-700" />
+                    <GrGallery className="w-7 h-7 text-black" />
                   </div>
                   <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Galería</span>
                 </button>

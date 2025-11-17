@@ -127,7 +127,7 @@ export default function POSManualEntryModal({
           <h2 className="text-2xl font-bold text-gray-900">Registro Manual</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-black hover:text-black transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -141,7 +141,7 @@ export default function POSManualEntryModal({
               Código de Barras
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-black" />
               <input
                 type="text"
                 value={barcode}

@@ -37,7 +37,7 @@ function NavLink({ item, isActive, isCollapsed }: NavLinkProps) {
   const baseClasses = 'flex items-center rounded-lg transition-colors duration-200'
   const sizeClasses = 'gap-6 py-3 px-4'
   const stateClasses = isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'
-  const iconColor = isActive ? 'text-gray-900' : 'text-gray-700'
+  const iconColor = 'text-black'
   const textClasses = isActive ? 'text-gray-900 font-medium' : 'text-gray-700'
 
   return (
@@ -75,7 +75,7 @@ export default function Sidebar({ userName = 'Usuario', userInitials = 'U' }: Si
           className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-lg transition-colors shrink-0"
           aria-label={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
-          <Menu size={24} className="text-gray-700" />
+          <Menu size={24} className="text-black" />
         </button>
         <h1 className={`text-2xl font-semibold text-gray-900 whitespace-nowrap transition-all duration-300 ${
           isCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-auto'
@@ -103,9 +103,9 @@ export default function Sidebar({ userName = 'Usuario', userInitials = 'U' }: Si
               aria-label={isDarkMode ? 'Modo oscuro' : 'Modo claro'}
             >
               {isDarkMode ? (
-                <Moon size={20} className="text-gray-700" />
+                <Moon size={20} className="text-black" />
               ) : (
-                <Sun size={20} className="text-gray-700" />
+                <Sun size={20} className="text-black" />
               )}
             </button>
           </div>
@@ -135,7 +135,7 @@ export default function Sidebar({ userName = 'Usuario', userInitials = 'U' }: Si
               isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-auto'
             }`}
           >
-            <MoreVertical size={20} className="text-gray-500 transition-opacity duration-300" />
+            <MoreVertical size={20} className="text-black transition-opacity duration-300" />
           </div>
         </Link>
       </div>

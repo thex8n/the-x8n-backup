@@ -13,6 +13,8 @@ interface ProductStatsProps {
 export default function ProductStats({ products, showStats, isLoading = false, topPosition = '70px' }: ProductStatsProps) {
   const [hasAnimated, setHasAnimated] = useState(false)
   const [hasFinishedLoading, setHasFinishedLoading] = useState(false)
+  const [previousShowStats, setPreviousShowStats] = useState(showStats)
+  const [isManualToggle, setIsManualToggle] = useState(false)
 
   // Detectar cuando termina la carga inicial
   useEffect(() => {
@@ -24,6 +26,11 @@ export default function ProductStats({ products, showStats, isLoading = false, t
       }, 300)
     }
   }, [isLoading, hasFinishedLoading])
+
+  // Actualizar estado anterior sin animación manual
+  useEffect(() => {
+    setPreviousShowStats(showStats)
+  }, [showStats])
 
   const totalProducts = products.length
 
@@ -158,8 +165,21 @@ export default function ProductStats({ products, showStats, isLoading = false, t
           }
         }
 
+        @keyframes fadeInSmooth {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
         .animate-slideDownFade {
           animation: slideDownFade 0.3s ease-out forwards;
+        }
+
+        .animate-fadeInSmooth {
+          animation: fadeInSmooth 0.3s ease-out forwards;
         }
 
         .momo-font {

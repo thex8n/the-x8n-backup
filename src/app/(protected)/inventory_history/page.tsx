@@ -15,7 +15,7 @@ export default async function InventoryHistoryPage() {
       {history.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <svg 
-            className="w-24 h-24 mx-auto mb-4 text-gray-400" 
+            className="w-24 h-24 mx-auto mb-4 text-black" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"

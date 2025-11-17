@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Category } from '@/types/category'
 import { Plus } from 'lucide-react'
+import { DynamicIcon } from '@/components/ui/DynamicIcon'
 
 interface MobileCategoryFilterProps {
   categories: Category[]
@@ -316,8 +317,8 @@ export default function MobileCategoryFilter({
                     : { borderColor: category.color }
                 }
               >
-                <span className="text-gray-400 text-xs">⋮⋮</span>
-                <span>{category.icon}</span>
+                <span className="text-black text-xs">⋮⋮</span>
+                <DynamicIcon iconId={category.icon} size={16} />
                 <span>{category.name}</span>
               </button>
             ))}
@@ -353,7 +354,7 @@ export default function MobileCategoryFilter({
           aria-label={isExpanded ? "Ocultar categorías" : "Mostrar categorías"}
         >
           <svg 
-            className={`text-gray-600 transition-all duration-300 ${
+            className={`text-black transition-all duration-300 ${
               isExpanded ? 'w-3 h-3 rotate-180' : 'w-4 h-4'
             }`}
             fill="none" 

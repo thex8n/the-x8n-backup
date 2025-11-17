@@ -25,7 +25,7 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
 
   return (
     <div className="relative w-full max-w-md">
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black w-5 h-5" />
       <input
         type="text"
         value={query}
@@ -37,7 +37,7 @@ export default function SearchBar({ onSearch, isLoading = false }: SearchBarProp
       {query && (
         <button
           onClick={handleClear}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black hover:text-black"
           disabled={isLoading}
         >
           <X className="w-5 h-5" />

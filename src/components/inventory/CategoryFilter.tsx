@@ -20,7 +20,7 @@ export default function CategoryFilter({ categories, selectedCategoryId, onChang
         <option value="">Todas las categorías</option>
         {categories.map((category) => (
           <option key={category.id} value={category.id}>
-            {category.icon} {category.name}
+            {category.name}
           </option>
         ))}
       </select>

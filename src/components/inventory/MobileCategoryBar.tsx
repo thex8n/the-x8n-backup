@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Category } from '@/types/category'
 import { Plus } from 'lucide-react'
-import { TiThMenu } from 'react-icons/ti'
+import { Icon } from '@iconify/react'
 import CategorySidebar from './CategorySidebar'
 
 interface MobileCategoryBarProps {
@@ -31,6 +31,8 @@ export default function MobileCategoryBar({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [hasAnimated, setHasAnimated] = useState(false)
   const [hasFinishedLoading, setHasFinishedLoading] = useState(false)
+  const [previousShowCategories, setPreviousShowCategories] = useState(showCategories)
+  const [isManualToggle, setIsManualToggle] = useState(false)
 
   // Deseleccionar el menú cuando se selecciona cualquier categoría o se cierra el sidebar
   useEffect(() => {
@@ -49,6 +51,11 @@ export default function MobileCategoryBar({
       }, 300)
     }
   }, [isLoading, hasFinishedLoading])
+
+  // Actualizar estado anterior sin animación manual
+  useEffect(() => {
+    setPreviousShowCategories(showCategories)
+  }, [showCategories])
 
   const zIndex = 'z-65' // Siempre por encima de stats (z-60) y header (z-50)
   const paddingTop = 'pt-2'
@@ -89,8 +96,21 @@ export default function MobileCategoryBar({
           }
         }
 
+        @keyframes fadeInSmooth {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
         .animate-slideDownFade {
           animation: slideDownFade 0.3s ease-out forwards;
+        }
+
+        .animate-fadeInSmooth {
+          animation: fadeInSmooth 0.3s ease-out forwards;
         }
 
         .momo-font {
@@ -102,8 +122,8 @@ export default function MobileCategoryBar({
       <div className="md:hidden">
         {showCategories && hasFinishedLoading && (
           <div
-            className={`fixed left-0 right-0 bg-white ${zIndex} ${!hasAnimated ? 'animate-slideDownFade' : ''}`}
-            style={{ top: topPosition }}
+            className={`fixed left-0 bg-white ${zIndex} ${!hasAnimated ? 'animate-slideDownFade' : ''}`}
+            style={{ top: topPosition, width: '100vw' }}
           >
             <div className={`flex gap-2 overflow-x-auto px-3 ${paddingTop} pb-2 scrollbar-hide`}>
               {/* Botón con ícono decorativo */}
@@ -118,7 +138,7 @@ export default function MobileCategoryBar({
                     : 'bg-gray-100 text-black'
                 }`}
               >
-                <TiThMenu className="w-5 h-5" />
+                <Icon icon="mdi:menu" width={20} height={20} />
               </button>
 
               {/* Botón "Todas" */}

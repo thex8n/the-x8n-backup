@@ -40,6 +40,7 @@ interface ScannedProduct {
 export default function InventoryPage() {
   const router = useRouter()
   const { registerLoader, unregisterLoader } = useLoading()
+
   const [showModeSelection, setShowModeSelection] = useState(false)
   const [showAddProductForm, setShowAddProductForm] = useState(false)
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
@@ -60,6 +61,14 @@ export default function InventoryPage() {
   const [showCategories, setShowCategories] = useState(true)
   const [componentOrder, setComponentOrder] = useState<string[]>(['stats', 'categories'])
   const [isMobile, setIsMobile] = useState(false)
+  const [showPlusButton, setShowPlusButton] = useState(false)
+
+  // Mostrar el botón + cuando termine de cargar
+  useEffect(() => {
+    if (!loading) {
+      setShowPlusButton(true)
+    }
+  }, [loading])
 
   // Detectar si estamos en mobile
   useEffect(() => {
@@ -414,6 +423,21 @@ export default function InventoryPage() {
 
   return (
     <>
+      <style jsx>{`
+        @keyframes fadeIn {
+          0% {
+            opacity: 0;
+          }
+          100% {
+            opacity: 1;
+          }
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out forwards;
+        }
+      `}</style>
+
       <MobileSearchHeader
         onSearch={handleSearch}
         searchQuery={searchQuery}
@@ -530,17 +554,19 @@ export default function InventoryPage() {
           />
         </div>
 
-        <button
-          onClick={() => setShowModeSelection(true)}
-          className="md:hidden fixed w-16 h-16 bg-black text-white rounded-2xl shadow-2xl transition-all flex items-center justify-center z-40 active:scale-95"
-          style={{
-            bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))',
-            right: '1.5rem'
-          }}
-          aria-label="Crear"
-        >
-          <Plus className="w-10 h-10" strokeWidth={3} />
-        </button>
+        {showPlusButton && (
+          <button
+            onClick={() => setShowModeSelection(true)}
+            className="md:hidden fixed w-16 h-16 bg-linear-to-br from-gray-900 via-black to-gray-800 text-white rounded-2xl shadow-2xl transition-all flex items-center justify-center z-40 active:scale-95 animate-fade-in"
+            style={{
+              bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))',
+              right: '1.5rem'
+            }}
+            aria-label="Crear"
+          >
+            <Plus className="w-10 h-10" strokeWidth={3} />
+          </button>
+        )}
 
         {showBarcodeScanner && (
           <BarcodeScannerModal

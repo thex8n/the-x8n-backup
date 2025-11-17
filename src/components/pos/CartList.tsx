@@ -16,7 +16,7 @@ export default function CartList({ items, onIncrement, onDecrement, onRemove }: 
     return (
       <div className="text-center py-12">
         <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-          <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
         </div>
@@ -48,7 +48,7 @@ export default function CartList({ items, onIncrement, onDecrement, onRemove }: 
                     className="object-cover w-full h-full"
                   />
                 ) : (
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 )}
@@ -82,7 +82,7 @@ export default function CartList({ items, onIncrement, onDecrement, onRemove }: 
                   className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                   disabled={item.quantity <= 1}
                 >
-                  <Minus className="w-4 h-4 text-gray-600" />
+                  <Minus className="w-4 h-4 text-black" />
                 </button>
                 <span className="w-12 text-center font-semibold text-gray-900">
                   {item.quantity}

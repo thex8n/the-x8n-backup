@@ -459,10 +459,10 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
   )
 
   return (
-    <div 
-      className="fixed inset-0 overflow-y-auto" 
-      style={{ 
-        zIndex: 60,
+    <div
+      className="fixed inset-0 overflow-y-auto"
+      style={{
+        zIndex: 70,
         background: 'radial-gradient(ellipse at center, rgb(59, 130, 246), rgb(29, 78, 216), rgb(15, 23, 42), rgb(0, 0, 0))'
       }}
     >
@@ -478,14 +478,14 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
       <button
         onClick={handleClose}
         className="absolute top-4 right-4 sm:top-6 sm:right-6 p-1.5 sm:p-2 transition-all"
-        style={{ zIndex: 70 }}
+        style={{ zIndex: 80 }}
       >
         <X className="w-8 h-8 sm:w-10 sm:h-10 text-white" strokeWidth={2.5} />
       </button>
 
       {showConfirmClose && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-80 p-4"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[90] p-4"
           onClick={() => {
             setShowConfirmClose(false)
             setIsManuallyLocked(false)
@@ -664,7 +664,7 @@ export default function BarcodeScannerModal({ onClose, onProductNotFound, onStoc
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <ImagePlus className="w-8 h-8 text-gray-400" />
+                          <ImagePlus className="w-8 h-8 text-black" />
                         )}
                       </div>
 

@@ -178,7 +178,7 @@ export default function AddProductForm({ onClose, onSuccess, initialCode, initia
             <h2 className="text-3xl md:text-2xl font-bold text-gray-900">Nuevo Producto</h2>
             <button
               onClick={handleCancel}
-              className="text-gray-400 hover:text-gray-600 p-2"
+              className="text-black hover:text-black p-2"
               aria-label="Cerrar"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

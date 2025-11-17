@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Category } from '@/types/category'
+import { Icon } from '@iconify/react'
 
 interface CategorySelectorProps {
   value: string | null | undefined
@@ -56,7 +57,7 @@ export default function CategorySelector({ value, onChange, categories, onCreate
         <span className="flex items-center gap-2">
           {selectedCategory ? (
             <>
-              <span className="text-lg">{selectedCategory.icon}</span>
+              <Icon icon={selectedCategory.icon} width={20} height={20} />
               <span
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: selectedCategory.color }}
@@ -103,7 +104,7 @@ export default function CategorySelector({ value, onChange, categories, onCreate
                   value === category.id ? 'bg-blue-50' : ''
                 }`}
               >
-                <span className="text-lg">{category.icon}</span>
+                <Icon icon={category.icon} width={20} height={20} />
                 <span
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: category.color }}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { updateCategory } from '@/app/actions/categories'
 import { Category, CategoryFormData } from '@/types/category'
+import { IconifySelector } from '@/components/ui/IconifySelector'
 
 interface EditCategoryFormProps {
   category: Category
@@ -10,9 +11,6 @@ interface EditCategoryFormProps {
   onSuccess: () => void
   categories?: Category[]
 }
-
-const EMOJI_OPTIONS = ['📦', '🛒', '👕', '💻', '🏠', '🍎', '💊', '🔧', '📱', '🎮', '🍔', '⚡', '🎨', '📚', '🏃']
-const COLOR_PRESETS = ['#6B7280', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6']
 
 export default function EditCategoryForm({ category, onClose, onSuccess, categories = [] }: EditCategoryFormProps) {
   const [loading, setLoading] = useState(false)
@@ -22,7 +20,7 @@ export default function EditCategoryForm({ category, onClose, onSuccess, categor
     name: category.name,
     description: category.description || '',
     parent_category_id: category.parent_category_id,
-    color: category.color,
+    color: '#000000',
     icon: category.icon,
     active: category.active,
   })
@@ -120,58 +118,14 @@ export default function EditCategoryForm({ category, onClose, onSuccess, categor
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClasses}>
-                  Icono *
-                </label>
-                <div className="grid grid-cols-5 gap-2">
-                  {EMOJI_OPTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, icon: emoji }))}
-                      className={`p-3 text-2xl border-2 rounded-lg transition-all ${
-                        formData.icon === emoji
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClasses}>
-                  Color *
-                </label>
-                <div className="space-y-2">
-                  <input
-                    type="color"
-                    name="color"
-                    value={formData.color}
-                    onChange={handleChange}
-                    className="w-full h-10 rounded-lg border border-gray-300 cursor-pointer"
-                  />
-                  <div className="grid grid-cols-4 gap-2">
-                    {COLOR_PRESETS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, color }))}
-                        className={`h-8 rounded border-2 transition-all ${
-                          formData.color === color
-                            ? 'border-gray-900 scale-110'
-                            : 'border-gray-300 hover:scale-105'
-                        }`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div>
+              <label className={labelClasses}>
+                Icono *
+              </label>
+              <IconifySelector
+                selectedIcon={formData.icon}
+                onSelectIcon={(iconId) => setFormData(prev => ({ ...prev, icon: iconId }))}
+              />
             </div>
 
             <div>
@@ -188,7 +142,7 @@ export default function EditCategoryForm({ category, onClose, onSuccess, categor
                 <option value="">Sin categoría padre</option>
                 {availableCategories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
+                    {cat.name}
                   </option>
                 ))}
               </select>

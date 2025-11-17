@@ -130,7 +130,7 @@ export default function ImageUpload({
 
       {uploading && (
         <div className="flex items-center justify-center w-32 h-32 bg-gray-100 rounded-lg border-2 border-gray-200">
-          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-black animate-spin" />
         </div>
       )}
 
@@ -141,7 +141,7 @@ export default function ImageUpload({
             onClick={() => setShowOptions(!showOptions)}
             className="w-32 h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-100 transition-all flex flex-col items-center justify-center gap-2 group"
           >
-            <ImagePlus className="w-8 h-8 text-gray-400 group-hover:text-gray-600 transition-colors" />
+            <ImagePlus className="w-8 h-8 text-black group-hover:text-black transition-colors" />
             <span className="text-xs text-gray-500 group-hover:text-gray-700 font-medium">Agregar</span>
           </button>
 
@@ -165,7 +165,7 @@ export default function ImageUpload({
                       className="flex flex-col items-center gap-2 py-3 rounded-xl"
                     >
                       <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{ border: '2.5px solid black' }}>
-                        <PiCameraBold className="w-7 h-7 text-gray-700" />
+                        <PiCameraBold className="w-7 h-7 text-black" />
                       </div>
                       <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Foto</span>
                     </button>
@@ -181,7 +181,7 @@ export default function ImageUpload({
                         backgroundOrigin: 'border-box',
                         backgroundClip: 'padding-box, border-box'
                       }}>
-                        <GrGallery className="w-7 h-7 text-gray-700" />
+                        <GrGallery className="w-7 h-7 text-black" />
                       </div>
                       <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Galería</span>
                     </button>
@@ -213,7 +213,7 @@ export default function ImageUpload({
                   className="flex flex-col items-center gap-2 py-3 rounded-xl"
                 >
                   <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center" style={{ border: '2.5px solid black' }}>
-                    <PiCameraBold className="w-7 h-7 text-gray-700" />
+                    <PiCameraBold className="w-7 h-7 text-black" />
                   </div>
                   <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Foto</span>
                 </button>
@@ -229,7 +229,7 @@ export default function ImageUpload({
                     backgroundOrigin: 'border-box',
                     backgroundClip: 'padding-box, border-box'
                   }}>
-                    <GrGallery className="w-7 h-7 text-gray-700" />
+                    <GrGallery className="w-7 h-7 text-black" />
                   </div>
                   <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'MomoTrustDisplay, sans-serif' }}>Galería</span>
                 </button>

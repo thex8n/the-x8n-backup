@@ -457,7 +457,7 @@ export default function POSBarcodeScannerModal({ onClose, cart, onUpdateCart }: 
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                            <ImageIcon className="w-6 h-6 text-gray-400" />
+                            <ImageIcon className="w-6 h-6 text-black" />
                           </div>
                         )}
                       </div>
